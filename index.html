@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ORA ET LABORA — Fleet</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#0e0e0e;--s1:#161616;--s2:#1e1e1e;--s3:#242424;--s4:#2c2c2c;
+  --b1:rgba(255,255,255,.07);--b2:rgba(255,255,255,.11);--b3:rgba(255,255,255,.18);
+  --t1:#f0f0f0;--t2:#8e8e8e;--t3:#484848;--w:#fff;
+  --green:#4caf7d;--gbg:rgba(76,175,125,.13);
+  --amber:#e0a44a;--abg:rgba(224,164,74,.13);
+  --red:#e05454;--rbg:rgba(224,84,84,.13);
+  --blue:#5b9cf6;--bbg:rgba(91,156,246,.13);
+  --purple:#a78bfa;--pbg:rgba(167,139,250,.13);
+  --r4:4px;--r8:8px;--r12:12px;--r16:16px;--r20:20px;
+  --nav-h:60px;--top-h:52px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html{font-size:14px;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;overscroll-behavior:none;}
+button,input,select,textarea{font-family:'Inter',sans-serif;}
+
+/* ── APP ── */
+.app{display:flex;flex-direction:column;height:100dvh;height:100vh;overflow:hidden;}
+
+/* ── LOADING ── */
+.ls{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:999;}
+.ls.gone{display:none;}
+.ls-icon{width:44px;height:44px;background:var(--w);border-radius:12px;display:flex;align-items:center;justify-content:center;animation:kp 1.4s ease-in-out infinite;}
+@keyframes kp{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(.93);}}
+.ls-txt{font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;letter-spacing:.12em;}
+.ls-err{color:var(--red);font-size:12px;text-align:center;max-width:360px;line-height:1.7;padding:0 20px;white-space:pre-line;}
+
+/* ── TOPBAR ── */
+.topbar{height:var(--top-h);background:var(--s1);border-bottom:1px solid var(--b1);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;z-index:60;}
+.tb-logo{display:flex;align-items:center;gap:9px;}
+.tb-ico{width:30px;height:30px;background:var(--w);border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.tb-nm{font-size:13px;font-weight:600;letter-spacing:.04em;}
+.tb-sep{width:1px;height:18px;background:var(--b2);flex-shrink:0;}
+.pills{display:flex;gap:2px;background:var(--s2);border-radius:var(--r12);padding:3px;border:1px solid var(--b1);}
+.pill{background:none;border:none;color:var(--t2);font-size:12px;font-weight:500;padding:5px 13px;border-radius:9px;transition:all .15s;display:flex;align-items:center;gap:5px;white-space:nowrap;cursor:pointer;}
+.pill:hover{color:var(--t1);background:var(--s3);}
+.pill.on{background:var(--w);color:#0e0e0e;}
+.pdot{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.45;}
+.pill.on .pdot{opacity:1;}
+.tb-r{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.tb-dt{font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;}
+.syncdot{width:7px;height:7px;border-radius:50%;background:var(--green);transition:background .3s;flex-shrink:0;}
+.syncdot.busy{background:var(--amber);animation:bl .7s infinite;}
+.syncdot.err{background:var(--red);}
+@keyframes bl{0%,100%{opacity:1;}50%{opacity:.15;}}
+
+/* ── MOBILE HEADER ── */
+.mob-hdr{display:none;height:var(--top-h);background:var(--s1);border-bottom:1px solid var(--b1);align-items:center;padding:0 16px;gap:10px;flex-shrink:0;z-index:60;}
+.mob-logo{display:flex;align-items:center;gap:8px;flex:1;}
+.mob-ico{width:28px;height:28px;background:var(--w);border-radius:7px;display:flex;align-items:center;justify-content:center;}
+.mob-nm{font-size:13px;font-weight:600;}
+.mob-sub{font-size:9px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-top:1px;}
+.mob-r{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.mob-dt{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;-webkit-overflow-scrolling:touch;}
+.content::-webkit-scrollbar{width:3px;}
+.content::-webkit-scrollbar-thumb{background:var(--s4);border-radius:2px;}
+
+/* ── PANELS ── */
+.panel{display:none;flex-direction:column;gap:16px;animation:kfu .18s ease;}
+.panel.on{display:flex;}
+@keyframes kfu{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── STAT CARDS ── */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;}
+.sc{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r16);padding:13px 15px;display:flex;flex-direction:column;gap:4px;transition:border-color .14s;}
+.sc:hover{border-color:var(--b2);}
+.sc-l{font-size:10px;color:var(--t3);font-weight:500;letter-spacing:.03em;text-transform:uppercase;}
+.sc-v{font-size:22px;font-weight:300;line-height:1;font-family:'JetBrains Mono',monospace;}
+.sc-v.cw{color:var(--w);}.sc-v.cg{color:var(--green);}.sc-v.ca{color:var(--amber);}.sc-v.cr{color:var(--red);}.sc-v.cp{color:var(--purple);}.sc-v.cb{color:var(--blue);}
+.sc-h{font-size:10px;color:var(--t3);}
+
+/* ── SECTION HEAD ── */
+.sh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.sh-t{font-size:14px;font-weight:600;display:flex;align-items:center;gap:7px;}
+.sh-c{font-size:11px;font-weight:500;background:var(--s2);color:var(--t3);border:1px solid var(--b1);border-radius:20px;padding:2px 8px;font-family:'JetBrains Mono',monospace;}
+.sh-r{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+
+/* ── BUTTONS ── */
+.bp{display:inline-flex;align-items:center;gap:6px;background:var(--w);color:#0e0e0e;border:none;padding:7px 13px;border-radius:var(--r12);font-size:12px;font-weight:600;cursor:pointer;transition:opacity .13s,transform .1s;white-space:nowrap;}
+.bp:active{opacity:.85;transform:scale(.97);}
+.bg{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--b2);color:var(--t2);padding:7px 12px;border-radius:var(--r12);font-size:12px;font-weight:500;cursor:pointer;transition:all .13s;white-space:nowrap;}
+.bg:hover{border-color:var(--b3);color:var(--t1);background:var(--s2);}
+.bx-g{display:inline-flex;align-items:center;gap:6px;background:var(--gbg);border:1px solid rgba(76,175,125,.25);color:var(--green);padding:7px 12px;border-radius:var(--r12);font-size:12px;font-weight:500;cursor:pointer;transition:all .13s;white-space:nowrap;}
+.bx-g:hover{background:rgba(76,175,125,.22);}
+.bx-r{display:inline-flex;align-items:center;gap:6px;background:var(--rbg);border:1px solid rgba(224,84,84,.3);color:var(--red);padding:9px 16px;border-radius:var(--r12);font-size:13px;font-weight:500;cursor:pointer;transition:all .13s;}
+.bx-r:hover{background:rgba(224,84,84,.22);}
+
+/* ── TABLE ── */
+.tcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r16);overflow:hidden;}
+.tscr{overflow-x:auto;}
+.tscr::-webkit-scrollbar{height:2px;}
+.tscr::-webkit-scrollbar-thumb{background:var(--s4);}
+table{width:100%;border-collapse:collapse;white-space:nowrap;}
+thead tr{border-bottom:1px solid var(--b1);}
+thead th{padding:10px 12px;text-align:left;font-size:10px;font-weight:500;color:var(--t3);letter-spacing:.05em;text-transform:uppercase;background:var(--s2);font-family:'JetBrains Mono',monospace;}
+tbody tr{border-bottom:1px solid var(--b1);transition:background .1s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--s3);}
+tbody td{padding:10px 12px;font-size:12.5px;color:var(--t2);vertical-align:middle;}
+.c1{font-size:13px;font-weight:500;color:var(--t1);display:block;}
+.c2{font-size:10.5px;color:var(--t3);margin-top:1px;}
+.plaque{display:inline-flex;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r4);padding:3px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:var(--t1);letter-spacing:.08em;}
+.bx{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;}
+.bx::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0;background:currentColor;}
+.bok{background:var(--gbg);color:var(--green);}
+.bwn{background:var(--abg);color:var(--amber);}
+.bdg{background:var(--rbg);color:var(--red);}
+.bbl{background:var(--bbg);color:var(--blue);}
+.bpu{background:var(--pbg);color:var(--purple);}
+.dc{font-family:'JetBrains Mono',monospace;font-size:11px;}
+.dco{color:var(--t2);}.dcn{color:var(--amber);}.dcx{color:var(--red);font-weight:500;}.dcm{color:var(--t3);}
+.ra{display:flex;gap:4px;align-items:center;}
+.rb{width:26px;height:26px;border-radius:var(--r8);border:none;background:none;color:var(--t3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s;}
+.rb:hover{background:var(--s3);color:var(--t1);}
+.rb.d:hover{color:var(--red);background:var(--rbg);}
+.rb.g:hover{color:var(--green);background:var(--gbg);}
+.rb.b:hover{color:var(--blue);background:var(--bbg);}
+.er-row td{text-align:center;padding:36px;color:var(--t3);font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;}
+
+/* ── DRIVER CELL ── */
+.drv-on{display:inline-flex;align-items:center;gap:6px;background:var(--gbg);border:1px solid rgba(76,175,125,.2);border-radius:var(--r8);padding:4px 9px;font-size:11.5px;font-weight:500;color:var(--green);}
+.drv-off{display:inline-flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r8);padding:4px 9px;font-size:11px;color:var(--t3);}
+.drv-since{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;margin-top:2px;}
+
+/* ── TIMELINE ── */
+.timeline{display:flex;flex-direction:column;gap:0;}
+.tl-item{display:flex;gap:0;position:relative;}
+.tl-left{display:flex;flex-direction:column;align-items:center;width:32px;flex-shrink:0;}
+.tl-dot{width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--bg);flex-shrink:0;margin-top:4px;z-index:1;}
+.tl-dot.closed{background:var(--t3);}
+.tl-dot.active{background:var(--green);box-shadow:0 0 0 3px rgba(76,175,125,.25);}
+.tl-line{width:2px;background:var(--b2);flex:1;margin-top:2px;}
+.tl-item:last-child .tl-line{display:none;}
+.tl-body{flex:1;padding:0 0 16px 10px;}
+.tl-name{font-size:13px;font-weight:600;color:var(--t1);}
+.tl-car{font-size:11px;color:var(--t3);margin-top:1px;}
+.tl-time{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--t2);margin-top:4px;display:flex;align-items:center;gap:8px;}
+.tl-dur{font-size:10px;color:var(--t3);margin-top:2px;}
+.tl-note{font-size:11px;color:var(--t3);margin-top:3px;font-style:italic;}
+.tl-badge-on{display:inline-flex;align-items:center;gap:4px;background:var(--gbg);color:var(--green);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:500;margin-top:4px;}
+.tl-acts{display:flex;gap:4px;margin-top:6px;}
+
+/* ── TIRE BADGE ── */
+.tire-s{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px;background:rgba(255,255,255,.07);color:var(--t1);border:1px solid var(--b2);}
+.tire-w{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;padding:3px 8px;border-radius:20px;background:var(--bbg);color:var(--blue);border:1px solid rgba(91,156,246,.2);}
+.tire-cond-g{color:var(--green);}.tire-cond-o{color:var(--amber);}.tire-cond-r{color:var(--red);}
+
+/* ── MOBILE CARDS ── */
+.mob-cards{display:none;flex-direction:column;gap:10px;}
+.mc{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r16);overflow:hidden;}
+.mc-top{display:flex;align-items:flex-start;justify-content:space-between;padding:13px 13px 10px;}
+.mc-info .mcn{font-size:14px;font-weight:600;color:var(--t1);line-height:1.2;}
+.mc-info .mct{font-size:11px;color:var(--t3);margin-top:3px;}
+.mc-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.mc-pl{display:inline-flex;background:var(--s2);border:1px solid var(--b2);border-radius:var(--r4);padding:3px 8px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500;color:var(--t1);letter-spacing:.07em;}
+.mc-acts{display:flex;gap:4px;}
+.mab{width:28px;height:28px;border-radius:var(--r8);border:1px solid var(--b1);background:var(--s2);color:var(--t3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s;}
+.mab:active{transform:scale(.9);}
+.mc-drv{padding:9px 13px;border-top:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.mc-dname{font-size:13px;font-weight:600;color:var(--green);}
+.mc-dnone{font-size:12px;color:var(--t3);}
+.mc-dsince{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;}
+.mc-grid{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--b1);}
+.mf{padding:9px 13px;border-right:1px solid var(--b1);border-bottom:1px solid var(--b1);}
+.mf:nth-child(2n){border-right:none;}
+.mf:nth-last-child(-n+2){border-bottom:none;}
+.mfl{font-size:9px;font-weight:500;color:var(--t3);letter-spacing:.04em;text-transform:uppercase;margin-bottom:3px;}
+.mfv{font-size:11.5px;font-family:'JetBrains Mono',monospace;color:var(--t2);}
+.mfv.warn{color:var(--amber);}.mfv.over{color:var(--red);font-weight:500;}
+.mc-foot{display:flex;align-items:center;justify-content:space-between;padding:9px 13px;border-top:1px solid var(--b1);flex-wrap:wrap;gap:6px;}
+
+/* ── CALENDAR ── */
+.cal-tb{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.mnav{display:flex;align-items:center;gap:2px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r12);padding:3px;}
+.mnbtn{width:28px;height:28px;border:none;background:none;color:var(--t2);border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .12s;}
+.mnbtn:hover,.mnbtn:active{background:var(--s4);color:var(--t1);}
+.mnlbl{font-size:13px;font-weight:600;color:var(--t1);padding:0 10px;min-width:130px;text-align:center;}
+.cal-r{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.cal-wrap{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r16);overflow:hidden;}
+.cgrid{display:grid;grid-template-columns:repeat(7,1fr);}
+.chd{background:var(--s2);border-bottom:1px solid var(--b1);padding:8px 4px;text-align:center;font-size:10px;font-weight:600;color:var(--t3);letter-spacing:.05em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;border-right:1px solid var(--b1);}
+.chd:last-child{border-right:none;}
+.cc{min-height:90px;padding:6px;border-right:1px solid var(--b1);border-bottom:1px solid var(--b1);transition:background .1s;}
+.cc:nth-child(7n){border-right:none;}
+.cc.lr{border-bottom:none;}
+.cc:hover{background:var(--s3);}
+.cc.emp{background:transparent;}
+.cc.tod{background:rgba(255,255,255,.025);}
+.dn{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--t3);line-height:1;margin-bottom:5px;display:block;}
+.cc.tod .dn{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:var(--w);color:#0e0e0e;border-radius:50%;font-weight:600;font-size:11px;}
+.cc.hf .dn{color:var(--t1);}
+.fchip{display:flex;flex-direction:column;gap:1px;background:var(--s2);border:1px solid var(--b2);border-left:2px solid var(--w);border-radius:var(--r4);padding:4px 5px;margin-bottom:3px;cursor:pointer;transition:background .1s;}
+.fchip:hover{background:var(--s4);}
+.fcp{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--t3);}
+.fcd{font-size:10px;font-weight:600;color:var(--t1);line-height:1.2;}
+.fct{font-size:9px;color:var(--t3);margin-top:1px;}
+.fca{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--amber);margin-top:1px;}
+.morel{font-size:9px;color:var(--t3);text-align:center;}
+
+/* ── FINE LIST MOBILE ── */
+.fine-list{display:flex;flex-direction:column;gap:8px;}
+.fi{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r16);padding:13px;display:flex;flex-direction:column;gap:8px;}
+.fi-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.fi-l{flex:1;}
+.fi-drv{font-size:14px;font-weight:600;}
+.fi-rsn{font-size:11px;color:var(--t2);margin-top:2px;}
+.fi-r{display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
+.fi-amt{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:500;color:var(--amber);}
+.fi-acts{display:flex;gap:4px;}
+.fi-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.fi-m{font-size:11px;color:var(--t3);font-family:'JetBrains Mono',monospace;display:flex;align-items:center;gap:5px;}
+.fi-sep{width:3px;height:3px;border-radius:50%;background:var(--t3);}
+
+/* ── MODAL ── */
+.ovl{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);z-index:300;display:none;align-items:flex-end;justify-content:center;}
+.ovl.on{display:flex;}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:var(--r20) var(--r20) 0 0;width:100%;max-width:600px;box-shadow:0 -20px 60px rgba(0,0,0,.5);animation:kmup .22s cubic-bezier(.16,1,.3,1);display:flex;flex-direction:column;max-height:95dvh;max-height:95vh;}
+@keyframes kmup{from{opacity:0;transform:translateY(28px);}to{opacity:1;transform:translateY(0);}}
+.mhdr{padding:16px 18px 14px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:relative;}
+.mhdr::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);width:36px;height:4px;background:var(--b2);border-radius:2px;}
+.mt{font-size:15px;font-weight:600;}
+.mcb{width:26px;height:26px;border-radius:var(--r8);border:none;background:var(--s2);color:var(--t2);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;transition:all .12s;}
+.mcb:hover{background:var(--s4);color:var(--t1);}
+.mbody{padding:16px 18px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;flex:1;}
+.mbody::-webkit-scrollbar{width:3px;}
+.mbody::-webkit-scrollbar-thumb{background:var(--s4);}
+.sdiv{font-size:10.5px;font-weight:600;color:var(--t3);letter-spacing:.06em;text-transform:uppercase;padding-bottom:8px;border-bottom:1px solid var(--b1);}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fr.f1{grid-template-columns:1fr;}
+.fr.f3{grid-template-columns:1fr 1fr 1fr;}
+.fld{display:flex;flex-direction:column;gap:5px;}
+.fld label{font-size:10px;font-weight:500;color:var(--t3);letter-spacing:.04em;text-transform:uppercase;}
+.fld input,.fld select,.fld textarea{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r12);padding:11px 12px;font-size:14px;color:var(--t1);outline:none;transition:border-color .13s,background .13s;appearance:none;-webkit-appearance:none;width:100%;}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--b3);background:var(--s3);}
+.fld input::placeholder,.fld textarea::placeholder{color:var(--t3);}
+.fld textarea{resize:vertical;min-height:60px;}
+.fld select option{background:#1e1e1e;}
+.stog{display:flex;gap:6px;}
+.sbt{flex:1;padding:10px 6px;border:1px solid var(--b2);border-radius:var(--r8);background:none;color:var(--t3);font-size:12px;font-weight:500;cursor:pointer;transition:all .13s;}
+.sbt.sp{background:var(--abg);color:var(--amber);border-color:rgba(224,164,74,.3);}
+.sbt.sg{background:var(--gbg);color:var(--green);border-color:rgba(76,175,125,.3);}
+.mft{padding:13px 18px;border-top:1px solid var(--b1);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;}
+.bsave{background:var(--w);color:#0e0e0e;border:none;font-size:13px;font-weight:600;padding:9px 18px;border-radius:var(--r12);cursor:pointer;transition:opacity .13s;}
+.bsave:hover,.bsave:active{opacity:.87;}
+.bsave:disabled{opacity:.35;cursor:not-allowed;}
+
+/* auto-hint */
+.ahint{background:var(--gbg);border:1px solid rgba(76,175,125,.25);border-radius:var(--r8);padding:10px 12px;font-size:12px;color:var(--green);display:none;line-height:1.5;}
+.ahint.show{display:block;}
+.ahint.warn{background:var(--abg);border-color:rgba(224,164,74,.3);color:var(--amber);}
+
+/* simplified tire picker */
+.seg-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.seg-row.two{grid-template-columns:repeat(2,1fr);}
+.seg-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 10px;border:1px solid var(--b2);border-radius:var(--r12);background:var(--s2);color:var(--t2);font-size:12.5px;font-weight:600;cursor:pointer;transition:all .13s;}
+.seg-btn:hover{border-color:var(--b3);background:var(--s3);color:var(--t1);}
+.seg-btn.on{border-color:var(--b3);color:var(--t1);}
+.seg-btn.none.on{background:var(--s4);}
+.seg-btn.summer.on{background:var(--abg);border-color:rgba(224,164,74,.35);color:var(--amber);}
+.seg-btn.winter.on{background:var(--bbg);border-color:rgba(91,156,246,.3);color:var(--blue);}
+.tsub{display:none;padding:12px;border:1px solid var(--b1);border-radius:var(--r12);background:var(--s2);}
+.tsub.on{display:block;}
+.tsub-h{font-size:11px;color:var(--t3);line-height:1.45;margin-top:8px;}
+
+/* ── CONFIRM ── */
+.conf-ovl{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(6px);z-index:400;display:none;align-items:center;justify-content:center;padding:20px;}
+.conf-ovl.on{display:flex;}
+.conf-box{background:var(--s1);border:1px solid var(--b2);border-radius:var(--r16);padding:24px 22px;width:100%;max-width:320px;box-shadow:0 20px 60px rgba(0,0,0,.5);animation:kfu .18s ease;}
+.conf-t{font-size:15px;font-weight:600;margin-bottom:8px;}
+.conf-m{font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:20px;}
+.conf-a{display:flex;gap:8px;justify-content:flex-end;}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:calc(var(--nav-h)+14px);left:50%;transform:translateX(-50%) translateY(70px);background:var(--s2);border:1px solid var(--b2);font-size:13px;padding:10px 18px;border-radius:var(--r12);white-space:nowrap;z-index:500;transition:transform .28s cubic-bezier(.16,1,.3,1),opacity .28s;opacity:0;pointer-events:none;}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+.toast.ok{border-color:rgba(76,175,125,.35);color:var(--green);}
+.toast.er{border-color:rgba(224,84,84,.35);color:var(--red);}
+
+/* ── BOTTOM NAV ── */
+.bnav{display:none;height:var(--nav-h);background:var(--s1);border-top:1px solid var(--b1);flex-shrink:0;z-index:60;padding-bottom:env(safe-area-inset-bottom,0px);}
+.bnav-in{display:flex;height:calc(100% - env(safe-area-inset-bottom,0px));}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:none;border:none;color:var(--t3);cursor:pointer;transition:color .13s;position:relative;}
+.nb.on{color:var(--w);}
+.nb svg{width:20px;height:20px;}
+.nb-l{font-size:9.5px;font-weight:500;}
+.nb-dot{position:absolute;top:8px;right:calc(50% - 14px);width:6px;height:6px;background:var(--red);border-radius:50%;border:1.5px solid var(--s1);display:none;}
+
+/* ── FAB ── */
+.fab{display:none;position:fixed;bottom:calc(var(--nav-h)+14px);right:16px;width:50px;height:50px;background:var(--w);color:#0e0e0e;border:none;border-radius:50%;box-shadow:0 8px 24px rgba(0,0,0,.4);font-size:22px;align-items:center;justify-content:center;z-index:100;cursor:pointer;transition:transform .14s;}
+.fab:active{transform:scale(.9);}
+.fab.show{display:flex;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:640px){
+  .topbar{display:none;}
+  .mob-hdr{display:flex;}
+  .bnav{display:block;}
+  .content{padding:12px;}
+  .desk-only{display:none !important;}
+  .mob-cards{display:flex;}
+  .fine-list{display:flex;}
+  .cal-tb .bp{display:none;}
+  .stats{grid-template-columns:repeat(2,1fr);}
+  .sc-v{font-size:20px;}
+  .cc{min-height:58px;padding:5px;}
+  .dn{font-size:11px;}
+  .fca,.fct{display:none;}
+  .mnlbl{min-width:100px;font-size:12px;}
+  .toast{bottom:calc(var(--nav-h)+12px);}
+  .fr.f3{grid-template-columns:1fr 1fr;}
+  .seg-row,.seg-row.two{grid-template-columns:1fr;}
+}
+@media(min-width:641px){
+  .mob-hdr{display:none !important;}
+  .bnav{display:none !important;}
+  .fab{display:none !important;}
+  .mob-cards{display:none !important;}
+  .fine-list{display:none !important;}
+  .mob-only{display:none !important;}
+  .toast{bottom:24px;}
+  .ovl{align-items:center;padding:20px;}
+  .modal{border-radius:var(--r16);max-height:90vh;}
+  .mhdr::before{display:none;}
+}
+@media(min-width:641px) and (max-width:1100px){
+  .stats{grid-template-columns:repeat(3,1fr);}
+  .tb-nm{display:none;}
+  .content{padding:16px;}
+}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div class="ls" id="ls">
+  <div class="ls-icon">
+    <svg width="22" height="22" viewBox="0 0 17 17" fill="none">
+      <rect x="1.5" y="1.5" width="6" height="6" rx="1.2" fill="#0e0e0e"/>
+      <rect x="9.5" y="1.5" width="6" height="6" rx="1.2" fill="#0e0e0e"/>
+      <rect x="1.5" y="9.5" width="6" height="6" rx="1.2" fill="#0e0e0e"/>
+      <rect x="9.5" y="9.5" width="6" height="6" rx="1.2" fill="#0e0e0e" opacity=".35"/>
+    </svg>
+  </div>
+  <div class="ls-txt">ЗАВАНТАЖЕННЯ...</div>
+  <div class="ls-err" id="ls-err"></div>
+</div>
+
+<div class="app" id="app" style="display:none">
+
+<!-- DESKTOP TOPBAR -->
+<header class="topbar">
+  <div class="tb-logo">
+    <div class="tb-ico"><svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="1.5" y="1.5" width="6" height="6" rx="1.2" fill="#0e0e0e"/><rect x="9.5" y="1.5" width="6" height="6" rx="1.2" fill="#0e0e0e"/><rect x="1.5" y="9.5" width="6" height="6" rx="1.2" fill="#0e0e0e"/><rect x="9.5" y="9.5" width="6" height="6" rx="1.2" fill="#0e0e0e" opacity=".35"/></svg></div>
+    <span class="tb-nm">ORA ET LABORA</span>
+  </div>
+  <div class="tb-sep"></div>
+  <div class="pills">
+    <button class="pill on" onclick="goTab('fleet',this)"><span class="pdot"></span>Автопарк</button>
+    <button class="pill" onclick="goTab('drivers',this)"><span class="pdot"></span>Водії</button>
+    <button class="pill" onclick="goTab('fines',this)"><span class="pdot"></span>Штрафи</button>
+    <button class="pill" onclick="goTab('tires',this)"><span class="pdot"></span>Резина</button>
+  </div>
+  <div class="tb-r">
+    <span class="syncdot" id="sd"></span>
+    <span class="tb-dt" id="hdrDate">—</span>
+  </div>
+</header>
+
+<!-- MOBILE HEADER -->
+<header class="mob-hdr">
+  <div class="mob-logo">
+    <div class="mob-ico"><svg width="16" height="16" viewBox="0 0 17 17" fill="none"><rect x="1.5" y="1.5" width="6" height="6" rx="1.2" fill="#0e0e0e"/><rect x="9.5" y="1.5" width="6" height="6" rx="1.2" fill="#0e0e0e"/><rect x="1.5" y="9.5" width="6" height="6" rx="1.2" fill="#0e0e0e"/><rect x="9.5" y="9.5" width="6" height="6" rx="1.2" fill="#0e0e0e" opacity=".35"/></svg></div>
+    <div><div class="mob-nm">ORA ET LABORA</div><div class="mob-sub">Fleet Management</div></div>
+  </div>
+  <div class="mob-r">
+    <span class="syncdot" id="sdm"></span>
+    <span class="mob-dt" id="mobDate">—</span>
+  </div>
+</header>
+
+<!-- CONTENT -->
+<div class="content" id="contentArea">
+
+  <!-- ══ FLEET ══ -->
+  <div id="tab-fleet" class="panel on">
+    <div class="stats" id="fleetStats"></div>
+    <div>
+      <div class="sh">
+        <div class="sh-t">Транспортні засоби <span class="sh-c" id="fleetCnt">0</span></div>
+        <div class="sh-r">
+          <button class="bp" onclick="openVModal()">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Додати авто
+          </button>
+        </div>
+      </div>
+      <div class="desk-only tcard"><div class="tscr"><table>
+        <thead><tr><th>#</th><th>Автомобіль</th><th>Номер</th><th>Рік</th><th>Pojištění</th><th>Дальниця до</th><th>Ремені</th><th>Коробка</th><th>STK</th><th>Резина зараз</th><th>Поточний водій</th><th>Стан</th><th></th></tr></thead>
+        <tbody id="fleetTb"></tbody>
+      </table></div></div>
+      <div class="mob-cards" id="fleetCards"></div>
+    </div>
+  </div>
+
+  <!-- ══ DRIVERS ══ -->
+  <div id="tab-drivers" class="panel">
+    <div class="stats" id="drvStats"></div>
+    <div>
+      <div class="sh">
+        <div class="sh-t">Водії <span class="sh-c" id="drvCnt">0</span></div>
+        <div class="sh-r">
+          <button class="bp" onclick="openDrvModal()">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Додати водія
+          </button>
+          <button class="bx-g" onclick="openAsnModal(null)">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="4" r="2.2" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 10.5c0-2.485 2.015-4 4.5-4s4.5 1.515 4.5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>Посадити за кермо
+          </button>
+        </div>
+      </div>
+      <!-- DRIVERS TABLE -->
+      <div class="desk-only tcard" style="margin-bottom:16px"><div class="tscr"><table>
+        <thead><tr><th>#</th><th>Водій</th><th>Телефон</th><th>Посвідчення</th><th>Поточне авто</th><th>За кермом з</th><th>Штрафів всього</th><th>Примітка</th><th></th></tr></thead>
+        <tbody id="drvTb"></tbody>
+      </table></div></div>
+      <!-- DRIVER TIMELINE -->
+      <div class="sh" style="margin-top:8px">
+        <div class="sh-t">Журнал змін водіїв <span class="sh-c" id="asnCnt">0</span></div>
+        <div class="sh-r">
+          <select id="asnFilterV" onchange="renderAsnTimeline()" style="background:var(--s2);border:1px solid var(--b2);border-radius:var(--r12);padding:6px 12px;color:var(--t1);font-size:12px;outline:none;">
+            <option value="">Всі авто</option>
+          </select>
+          <select id="asnFilterD" onchange="renderAsnTimeline()" style="background:var(--s2);border:1px solid var(--b2);border-radius:var(--r12);padding:6px 12px;color:var(--t1);font-size:12px;outline:none;">
+            <option value="">Всі водії</option>
+          </select>
+        </div>
+      </div>
+      <div class="tcard"><div style="padding:20px 20px 4px" id="asnTimeline"></div></div>
+    </div>
+  </div>
+
+  <!-- ══ FINES ══ -->
+  <div id="tab-fines" class="panel">
+    <div class="stats" id="fineStats"></div>
+    <div>
+      <div class="cal-tb">
+        <div class="mnav">
+          <button class="mnbtn" onclick="chM(-1)"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 11L5 7l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <span class="mnlbl" id="calLbl">—</span>
+          <button class="mnbtn" onclick="chM(1)"><svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="cal-r">
+          <button class="bx-g" onclick="exportCSV()"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v7.5M4 6.5l2.5 2.5 2.5-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.5 10.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>CSV</button>
+          <button class="bx-g" onclick="exportPDF()"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v7.5M4 6.5l2.5 2.5 2.5-2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M1.5 10.5h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>PDF</button>
+          <button class="bp" onclick="openFineModal()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Додати штраф</button>
+        </div>
+      </div>
+    </div>
+    <div class="cal-wrap"><div class="cgrid" id="calGrid"></div></div>
+    <div>
+      <div class="sh"><div class="sh-t">Журнал штрафів <span class="sh-c" id="fcb">0</span></div></div>
+      <div class="desk-only tcard"><div class="tscr"><table>
+        <thead><tr><th>#</th><th>Дата</th><th>Час</th><th>Авто</th><th>Номер</th><th>Водій</th><th>Причина</th><th>Сума</th><th>Статус</th><th></th></tr></thead>
+        <tbody id="fineTb"></tbody>
+      </table></div></div>
+      <div class="fine-list" id="fineList"></div>
+    </div>
+  </div>
+
+  <!-- ══ TIRES ══ -->
+  <div id="tab-tires" class="panel">
+    <div class="stats" id="tireStats"></div>
+    <div>
+      <div class="sh">
+        <div class="sh-t">Облік шин <span class="sh-c" id="tireCnt">0</span></div>
+        <div class="sh-r">
+          <select id="tireFilterV" onchange="renderTires()" style="background:var(--s2);border:1px solid var(--b2);border-radius:var(--r12);padding:6px 12px;color:var(--t1);font-size:12px;outline:none;">
+            <option value="">Всі авто</option>
+          </select>
+          <select id="tireFilterS" onchange="renderTires()" style="background:var(--s2);border:1px solid var(--b2);border-radius:var(--r12);padding:6px 12px;color:var(--t1);font-size:12px;outline:none;">
+            <option value="">Всі сезони</option>
+            <option value="summer">☀ Літні</option>
+            <option value="winter">❄ Зимові</option>
+          </select>
+          <button class="bp" onclick="openTireModal()"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Додати шини</button>
+        </div>
+      </div>
+      <div class="desk-only tcard"><div class="tscr"><table>
+        <thead><tr><th>#</th><th>Автомобіль</th><th>Сезон</th><th>Вісь</th><th>Розмір</th><th>Бренд</th><th>Рік куп.</th><th>Стан</th><th>Розміщення</th><th>Місце збереж.</th><th>Примітка</th><th></th></tr></thead>
+        <tbody id="tireTb"></tbody>
+      </table></div></div>
+      <!-- Mobile tire cards -->
+      <div class="mob-cards" id="tireCards"></div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<!-- BOTTOM NAV -->
+<nav class="bnav">
+  <div class="bnav-in">
+    <button class="nb on" id="nb-fleet" onclick="mobTab('fleet',this)">
+      <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="2" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="2" y="11" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><rect x="11" y="11" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5" opacity=".4"/></svg>
+      <span class="nb-l">Авто</span>
+    </button>
+    <button class="nb" id="nb-drivers" onclick="mobTab('drivers',this)">
+      <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="7" r="3.5" stroke="currentColor" stroke-width="1.5"/><path d="M3 17c0-3.314 3.134-6 7-6s7 2.686 7 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span class="nb-l">Водії</span>
+    </button>
+    <button class="nb" id="nb-fines" onclick="mobTab('fines',this)">
+      <svg viewBox="0 0 20 20" fill="none"><rect x="3" y="2" width="14" height="16" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M7 7h6M7 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+      <span class="nb-l">Штрафи</span>
+      <span class="nb-dot" id="fineDot"></span>
+    </button>
+    <button class="nb" id="nb-tires" onclick="mobTab('tires',this)">
+      <svg viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.3"/></svg>
+      <span class="nb-l">Резина</span>
+    </button>
+  </div>
+</nav>
+<button class="fab" id="fab" onclick="onFab()">+</button>
+
+</div><!-- /app -->
+
+<!-- ══ VEHICLE MODAL ══ -->
+<div class="ovl" id="vOvl">
+  <div class="modal">
+    <div class="mhdr"><span class="mt" id="vMT">Новий автомобіль</span><button class="mcb" onclick="closeVModal()">×</button></div>
+    <div class="mbody">
+      <div class="sdiv">Основна інформація</div>
+      <div class="fr"><div class="fld"><label>Назва / Модель</label><input id="vName" placeholder="VW Crafter"></div><div class="fld"><label>Тип</label><input id="vType" placeholder="Фургон · вантажний"></div></div>
+      <div class="fr"><div class="fld"><label>Номерний знак</label><input id="vPlate" placeholder="1AB 2345" style="text-transform:uppercase"></div><div class="fld"><label>Рік</label><input id="vYear" type="number" placeholder="2023"></div></div>
+      <div class="fr"><div class="fld"><label>№ Pojištění</label><input id="vPoj" placeholder="POJ-000000"></div><div class="fld"><label>Пробіг</label><input id="vMileage" placeholder="120 000 km"></div></div>
+      <div class="fr"><div class="fld"><label>Стан авто</label><select id="vStatus"><option value="ok">✓ OK</option><option value="warn">⚠ Увага</option><option value="danger">✕ Критично</option></select></div><div class="fld"><label>VIN</label><input id="vVin" placeholder="WV1ZZZ2FZ..."></div></div>
+      <div class="sdiv">Технічне обслуговування</div>
+      <div class="fr"><div class="fld"><label>Заміна ременів</label><input id="vBelts" placeholder="04/2026"></div><div class="fld"><label>Обслуг. коробки</label><input id="vGear" placeholder="80 000 km"></div></div>
+      <div class="fr"><div class="fld"><label>STK (техогляд)</label><input id="vStk" placeholder="08/2026"></div><div class="fld"><label>Наступне ТО</label><input id="vNextService" placeholder="12/2026 або 140 000 km"></div></div>
+      <div class="sdiv">Дальниця</div>
+      <div class="fr"><div class="fld"><label>Оплачена до</label><input id="vTollDate" type="date"></div><div class="fld"><label>Сума / тариф</label><input id="vTollAmt" placeholder="5 800 Kč / рік"></div></div>
+      <div class="sdiv">Резина</div>
+      <input id="vTireSeason" type="hidden" value="">
+      <div class="fr f1">
+        <div class="fld">
+          <label>Що стоїть зараз</label>
+          <div class="seg-row">
+            <button type="button" class="seg-btn none" data-season-group="vTire" data-season="" onclick="setVehicleTireSeason('')">Не вказано</button>
+            <button type="button" class="seg-btn summer" data-season-group="vTire" data-season="summer" onclick="setVehicleTireSeason('summer')">☀ Літня</button>
+            <button type="button" class="seg-btn winter" data-season-group="vTire" data-season="winter" onclick="setVehicleTireSeason('winter')">❄ Зимова</button>
+          </div>
+        </div>
+      </div>
+      <div class="tsub" id="vTireSizePanel">
+        <div class="fld">
+          <label>Розмір резини</label>
+          <input id="vTireSize" placeholder="225/75R16C">
+        </div>
+        <div class="tsub-h">Після вибору сезону вкажіть тільки актуальний розмір комплекту, який зараз стоїть на авто.</div>
+      </div>
+    </div>
+    <div class="mft"><button class="bg" onclick="closeVModal()">Скасувати</button><button class="bsave" id="vSaveBtn" onclick="saveVehicle()">Зберегти</button></div>
+  </div>
+</div>
+
+<!-- ══ ASSIGN DRIVER MODAL ══ -->
+<div class="ovl" id="asnOvl">
+  <div class="modal">
+    <div class="mhdr"><span class="mt" id="asnMT">Посадити водія за кермо</span><button class="mcb" onclick="closeAsnModal()">×</button></div>
+    <div class="mbody">
+      <div class="fr"><div class="fld"><label>Автомобіль</label><select id="asnVehicle" onchange="onAsnVehicleChange()"></select></div><div class="fld"><label>Водій</label><select id="asnDriver"></select></div></div>
+      <div class="fr"><div class="fld"><label>Сів за кермо (дата і час)</label><input type="datetime-local" id="asnFrom"></div><div class="fld"><label>Здав авто (якщо вже)</label><input type="datetime-local" id="asnTo"></div></div>
+      <div class="fr f1"><div class="fld"><label>Примітка</label><input id="asnNote" placeholder="Відрядження, заміна, чергування..."></div></div>
+      <div id="asnCurInfo" style="display:none">
+        <div class="sdiv">Поточний водій цього авто</div>
+        <div id="asnCurBody" style="background:var(--s2);border-radius:var(--r12);padding:12px 14px;"></div>
+        <p style="font-size:11px;color:var(--amber);margin-top:8px">⚠ При збереженні поточний водій автоматично отримає час закінчення рівний часу початку нового.</p>
+      </div>
+      <div id="asnHistBlock" style="display:none">
+        <div class="sdiv">Останні зміни водіїв</div>
+        <div id="asnHistBody"></div>
+      </div>
+    </div>
+    <div class="mft"><button class="bg" onclick="closeAsnModal()">Скасувати</button><button class="bsave" id="asnSaveBtn" onclick="saveAssignment()">Зберегти</button></div>
+  </div>
+</div>
+
+<!-- ══ DRIVER MODAL ══ -->
+<div class="ovl" id="drvOvl">
+  <div class="modal">
+    <div class="mhdr"><span class="mt" id="drvMT">Новий водій</span><button class="mcb" onclick="closeDrvModal()">×</button></div>
+    <div class="mbody">
+      <div class="fr f1"><div class="fld"><label>Повне ім'я</label><input id="drvName" placeholder="Прізвище Ім'я По батькові"></div></div>
+      <div class="fr"><div class="fld"><label>Телефон</label><input id="drvPhone" placeholder="+420 xxx xxx xxx"></div><div class="fld"><label>№ посвідчення водія</label><input id="drvLicense" placeholder="B 123456"></div></div>
+      <div class="fr"><div class="fld"><label>Категорія прав</label><input id="drvCat" placeholder="B, C, CE..."></div><div class="fld"><label>Права дійсні до</label><input id="drvLicExp" type="date"></div></div>
+      <div class="fr f1"><div class="fld"><label>Примітка</label><textarea id="drvNote" placeholder="Додаткова інформація..."></textarea></div></div>
+    </div>
+    <div class="mft"><button class="bg" onclick="closeDrvModal()">Скасувати</button><button class="bsave" id="drvSaveBtn" onclick="saveDriver()">Зберегти</button></div>
+  </div>
+</div>
+
+<!-- ══ FINE MODAL ══ -->
+<div class="ovl" id="fOvl">
+  <div class="modal">
+    <div class="mhdr"><span class="mt" id="fMT">Новий штраф</span><button class="mcb" onclick="closeFModal()">×</button></div>
+    <div class="mbody">
+      <div class="fr"><div class="fld"><label>Дата штрафу</label><input type="date" id="mDate" onchange="autoFindDriver()"></div><div class="fld"><label>Час події</label><input type="time" id="mTime" onchange="autoFindDriver()"></div></div>
+      <div class="fr f1"><div class="fld"><label>Автомобіль</label><select id="mCar" onchange="autoFindDriver()"></select></div></div>
+      <div class="ahint" id="ahint"></div>
+      <div class="fr f1"><div class="fld"><label>Водій (знаходиться автоматично)</label><select id="mDriver"></select></div></div>
+      <div class="fr"><div class="fld"><label>Причина</label><input type="text" id="mReason" placeholder="Перевищення швидкості"></div><div class="fld"><label>Сума (Kč)</label><input type="number" id="mAmt" placeholder="2000"></div></div>
+      <div class="fr"><div class="fld"><label>Статус</label><div class="stog"><button class="sbt sp" id="sBp" onclick="setSt('pending')">⏳ Очікує</button><button class="sbt" id="sBg" onclick="setSt('paid')">✓ Сплачено</button></div></div><div class="fld"><label>Місце події</label><input type="text" id="mPlace" placeholder="напр. D1 км 45"></div></div>
+      <div class="fr f1"><div class="fld"><label>Примітка</label><textarea id="mNote" placeholder="Додаткова інформація..."></textarea></div></div>
+    </div>
+    <div class="mft"><button class="bg" onclick="closeFModal()">Скасувати</button><button class="bsave" id="fSaveBtn" onclick="saveFine()">Зберегти</button></div>
+  </div>
+</div>
+
+<!-- ══ TIRE MODAL ══ -->
+<div class="ovl" id="tireOvl">
+  <div class="modal">
+    <div class="mhdr"><span class="mt" id="tireMT">Нові шини</span><button class="mcb" onclick="closeTireModal()">×</button></div>
+    <div class="mbody">
+      <div class="fr f1"><div class="fld"><label>Автомобіль</label><select id="tireVehicle"></select></div></div>
+      <input id="tireSeason" type="hidden" value="">
+      <div class="fr f1">
+        <div class="fld">
+          <label>Категорія</label>
+          <div class="seg-row two">
+            <button type="button" class="seg-btn summer" data-season-group="tire" data-season="summer" onclick="setTireSeasonChoice('summer')">☀ Літня</button>
+            <button type="button" class="seg-btn winter" data-season-group="tire" data-season="winter" onclick="setTireSeasonChoice('winter')">❄ Зимова</button>
+          </div>
+        </div>
+      </div>
+      <div class="tsub" id="tireSizePanel">
+        <div class="fld">
+          <label>Розмір</label>
+          <input id="tireSize" placeholder="225/75R16C">
+        </div>
+        <div class="tsub-h">Спочатку оберіть сезон, після цього вкажіть розмір комплекту.</div>
+      </div>
+      <div class="fr f1"><div class="fld"><label>Примітка</label><input id="tireNote" placeholder="Будь-яка коротка примітка"></div></div>
+    </div>
+    <div class="mft"><button class="bg" onclick="closeTireModal()">Скасувати</button><button class="bsave" id="tireSaveBtn" onclick="saveTire()">Зберегти</button></div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="conf-ovl" id="confOvl">
+  <div class="conf-box">
+    <div class="conf-t" id="confT">Видалити?</div>
+    <div class="conf-m" id="confM"></div>
+    <div class="conf-a"><button class="bg" onclick="closeConf()">Скасувати</button><button class="bx-r" id="confOk">Видалити</button></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════
+const SUPA_URL='https://deiftqxidmrtpbveyxgc.supabase.co';
+const SUPA_KEY='sb_publishable_06eDFeLHePxcjbWPY69T6w_UmdEP8rd';
+const db=supabase.createClient(SUPA_URL,SUPA_KEY);
+
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+const MN=['Січень','Лютий','Березень','Квітень','Травень','Червень','Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+const DN=['Пн','Вт','Ср','Чт','Пт','Сб','Нд'];
+let cy=new Date().getFullYear(),cm=new Date().getMonth();
+let selSt='pending',currentTab='fleet';
+let editVId=null,editDrvId=null,editFineId=null,editTireId=null;
+let vehicles=[],drivers=[],assignments=[],fines=[],tires=[];
+let toastTmr;
+let vehicleTireTouched=false;
+
+const EICO=`<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M9.5 1.5l2 2-7 7H2.5v-2l7-7z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>`;
+const DICO=`<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5h9M5 3.5V2.5h3v1M5.5 6v3.5M7.5 6v3.5M3 3.5l.5 7h6l.5-7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const UICO=`<svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="4.5" r="2.2" stroke="currentColor" stroke-width="1.3"/><path d="M1.5 11c0-2.485 2.24-4 5-4s5 1.515 5 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>`;
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+async function init(){
+  const d=new Date(),ds=d.toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric'});
+  document.getElementById('hdrDate').textContent=ds;
+  document.getElementById('mobDate').textContent=ds;
+  sync('busy');
+  try{
+    await Promise.all([loadV(),loadD(),loadA(),loadF(),loadT()]);
+    sync('ok');
+    document.getElementById('ls').classList.add('gone');
+    document.getElementById('app').style.display='flex';
+    document.getElementById('fab').classList.add('show');
+    renderFleet();
+    populateSels();
+  }catch(e){
+    sync('err');
+    document.getElementById('ls-err').textContent='Помилка підключення:\n'+e.message+'\n\nПеревірте що всі таблиці створені в Supabase SQL Editor.';
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// DB LOADERS
+// ══════════════════════════════════════════════════════
+async function loadV(){const{data,error}=await db.from('vehicles').select('*').order('created_at');if(error)throw error;vehicles=data.map(r=>({id:r.id,name:r.name,type:r.type||'',plate:r.plate||'',year:r.year,poj:r.poj||'',belts:r.belts||'—',gear:r.gear||'—',stk:r.stk||'—',status:r.status||'ok',mileage:r.mileage||'',tollDate:r.toll_paid_until||null,tollAmt:r.toll_amount||'',vin:r.vin||'',nextService:r.next_service||''}));}
+async function loadD(){const{data,error}=await db.from('drivers').select('*').order('name');if(error)throw error;drivers=data.map(r=>({id:r.id,name:r.name,phone:r.phone||'',license:r.license||'',cat:r.cat||'',licExp:r.lic_exp||null,note:r.note||''}));}
+async function loadA(){const{data,error}=await db.from('driver_assignments').select('*').order('date_from',{ascending:false});if(error)throw error;assignments=data.map(r=>({id:r.id,vehicleId:r.vehicle_id,driverId:r.driver_id,dateFrom:r.date_from,dateTo:r.date_to||null,note:r.note||''}));}
+async function loadF(){const{data,error}=await db.from('fines').select('*').order('date',{ascending:false});if(error)throw error;fines=data.map(r=>({id:r.id,date:r.date,time:r.time||'',car:r.car||'',plate:r.plate||'',driver:r.driver||'',driverId:r.driver_id||null,reason:r.reason||'',amount:r.amount||0,status:r.status||'pending',note:r.note||'',place:r.place||''}));}
+async function loadT(){
+  try{const{data,error}=await db.from('tires').select('*').order('created_at');if(error)throw error;
+  tires=data.map(r=>({id:r.id,vehicleId:r.vehicle_id,season:r.season||'summer',pos:r.position||'all',size:r.size||'',brand:r.brand||'',cond:r.condition||'good',loc:r.location||'on_car',storage:r.storage_place||'',yearB:r.year_bought||null,note:r.note||''}));}catch(e){tires=[];}
+}
+
+// ══════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════
+function sync(s){document.querySelectorAll('.syncdot').forEach(d=>{d.className='syncdot'+(s==='busy'?' busy':s==='err'?' err':'');});}
+function toast(msg,type='ok'){const t=document.getElementById('toast');t.textContent=msg;t.className='toast '+type+' show';clearTimeout(toastTmr);toastTmr=setTimeout(()=>t.classList.remove('show'),3200);}
+function setSave(id,on){const b=document.getElementById(id);if(b){b.disabled=on;b.textContent=on?'Збереження...':'Зберегти';}}
+
+function dateCls(v){
+  if(!v||String(v).match(/ПРОСТ|НЕЗАБ/i))return'over';
+  const m=String(v).match(/^(\d{2})\/(\d{4})/);if(!m)return'';
+  const diff=(parseInt(m[2])-new Date().getFullYear())*12+(parseInt(m[1])-1-new Date().getMonth());
+  return diff<0?'over':diff<3?'warn':'';
+}
+function tollCls(ds){
+  if(!ds)return'dcm';
+  const diff=Math.ceil((new Date(ds)-new Date())/(864e5));
+  return diff<0?'dcx':diff<30?'dcn':'dco';
+}
+function sBadge(s){return s==='ok'?'<span class="bx bok">OK</span>':s==='warn'?'<span class="bx bwn">Увага</span>':'<span class="bx bdg">Критично</span>';}
+function tireBadge(s){return s==='summer'?'<span class="tire-s">☀ Літо</span>':'<span class="tire-w">❄ Зима</span>';}
+function condBadge(c){return c==='good'?'<span class="tire-cond-g">✓ Добрий</span>':c==='ok'?'<span class="tire-cond-o">△ Задовільний</span>':'<span class="tire-cond-r">✕ Зношені</span>';}
+function posLabel(p){return{all:'4 колеса',front:'Передня вісь',rear:'Задня вісь',spare:'Запаска'}[p]||p;}
+function locLabel(l){return l==='on_car'?'<span class="bx bok">На авто</span>':'<span class="bx bwn">На складі</span>';}
+function fmtDT(s){if(!s)return'—';const d=new Date(s);return d.toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}).replace(',','');}
+function fmtD(s){if(!s)return'—';return new Date(s+'T00:00').toLocaleDateString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function durLabel(from,to){
+  const ms=(to?new Date(to):new Date())-new Date(from);
+  const h=Math.floor(ms/36e5),d=Math.floor(h/24);
+  return d>0?`${d} дн. ${h%24} год`:`${h} год`;
+}
+
+function getCurAsn(vid){return assignments.find(a=>a.vehicleId===vid&&!a.dateTo);}
+function getAsnAtTime(vid,dtStr){
+  const ts=new Date(dtStr).getTime();
+  return assignments.find(a=>{
+    if(a.vehicleId!==vid)return false;
+    const f=new Date(a.dateFrom).getTime();
+    const t=a.dateTo?new Date(a.dateTo).getTime():Infinity;
+    return ts>=f&&ts<=t;
+  });
+}
+function drvName(id){return drivers.find(d=>d.id===id)?.name||'—';}
+function vName(id){const v=vehicles.find(x=>x.id===id);return v?`${v.name} (${v.plate})`:'—';}
+function getCurrentTire(vid){return tires.find(t=>t.vehicleId===vid&&t.loc==='on_car');}
+function syncSeasonGroup(group,season){
+  document.querySelectorAll(`[data-season-group="${group}"]`).forEach(btn=>{
+    btn.classList.toggle('on',btn.dataset.season===season);
+  });
+  const panel=document.getElementById(group+'SizePanel');
+  if(panel)panel.classList.toggle('on',season==='summer'||season==='winter');
+}
+function setVehicleTireSeason(season,touched=true){
+  if(touched)vehicleTireTouched=true;
+  document.getElementById('vTireSeason').value=season||'';
+  if(!(season==='summer'||season==='winter'))document.getElementById('vTireSize').value='';
+  syncSeasonGroup('vTire',season||'');
+}
+function setTireSeasonChoice(season){
+  document.getElementById('tireSeason').value=season||'';
+  if(!(season==='summer'||season==='winter'))document.getElementById('tireSize').value='';
+  syncSeasonGroup('tire',season||'');
+}
+function buildTirePayload(existing,overrides={}){
+  return{
+    vehicle_id:overrides.vehicle_id??existing?.vehicleId??null,
+    season:overrides.season??existing?.season??'summer',
+    position:overrides.position??existing?.pos??'all',
+    size:overrides.size??existing?.size??'',
+    brand:overrides.brand??existing?.brand??'',
+    year_bought:overrides.year_bought??existing?.yearB??null,
+    condition:overrides.condition??existing?.cond??'good',
+    location:overrides.location??existing?.loc??'on_car',
+    storage_place:overrides.storage_place??existing?.storage??'',
+    note:overrides.note??existing?.note??''
+  };
+}
+async function syncVehicleTire(vehicleId){
+  const season=document.getElementById('vTireSeason').value;
+  const size=document.getElementById('vTireSize').value.trim();
+  const existing=getCurrentTire(vehicleId);
+  if(!season){
+    if(existing&&vehicleTireTouched){
+      const{error}=await db.from('tires').delete().eq('id',existing.id);
+      if(error)throw error;
+    }
+    return;
+  }
+  const payload=buildTirePayload(existing,{vehicle_id:vehicleId,season,size,position:'all',location:'on_car'});
+  if(existing){
+    const{error}=await db.from('tires').update(payload).eq('id',existing.id);
+    if(error)throw error;
+  }else{
+    const{error}=await db.from('tires').insert([payload]);
+    if(error)throw error;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════════════
+function goTab(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.pill').forEach(b=>b.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('on');btn.classList.add('on');currentTab=id;
+  if(id==='fleet')renderFleet();else if(id==='drivers')renderDrivers();else if(id==='fines')renderFines();else if(id==='tires')renderTires();
+}
+function mobTab(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('on');btn.classList.add('on');currentTab=id;
+  document.getElementById('contentArea').scrollTop=0;
+  if(id==='fleet')renderFleet();else if(id==='drivers')renderDrivers();else if(id==='fines')renderFines();else if(id==='tires')renderTires();
+}
+function onFab(){if(currentTab==='fleet')openVModal();else if(currentTab==='drivers')openDrvModal();else if(currentTab==='fines')openFineModal();else openTireModal();}
+
+// ══════════════════════════════════════════════════════
+// FLEET
+// ══════════════════════════════════════════════════════
+function renderFleet(){
+  const ok=vehicles.filter(v=>v.status==='ok').length;
+  const warn=vehicles.filter(v=>v.status==='warn').length;
+  const danger=vehicles.filter(v=>v.status==='danger').length;
+  const withDrv=vehicles.filter(v=>getCurAsn(v.id)).length;
+  document.getElementById('fleetStats').innerHTML=`
+    <div class="sc"><div class="sc-l">Всього</div><div class="sc-v cw">${vehicles.length}</div><div class="sc-h">авто</div></div>
+    <div class="sc"><div class="sc-l">OK</div><div class="sc-v cg">${ok}</div><div class="sc-h">в нормі</div></div>
+    <div class="sc"><div class="sc-l">Увага</div><div class="sc-v ca">${warn}</div><div class="sc-h">перевірити</div></div>
+    <div class="sc"><div class="sc-l">Критично</div><div class="sc-v cr">${danger}</div><div class="sc-h">дія потрібна</div></div>
+    <div class="sc"><div class="sc-l">З водієм</div><div class="sc-v cp">${withDrv}</div><div class="sc-h">зараз їдуть</div></div>`;
+  document.getElementById('fleetCnt').textContent=vehicles.length;
+
+  const tb=document.getElementById('fleetTb');
+  if(!vehicles.length){tb.innerHTML='<tr class="er-row"><td colspan="13">— список авто порожній —</td></tr>';renderFleetCards();return;}
+  tb.innerHTML=vehicles.map((v,i)=>{
+    const asn=getCurAsn(v.id);
+    const drv=asn?drivers.find(d=>d.id===asn.driverId):null;
+    const onCarTire=getCurrentTire(v.id);
+    const drvCell=drv
+      ?`<div><div class="drv-on">${UICO} ${drv.name}</div><div class="drv-since">з ${fmtDT(asn.dateFrom)}</div></div>`
+      :`<div class="drv-off">— вільне —</div>`;
+    return`<tr>
+      <td class="ri">${String(i+1).padStart(2,'0')}</td>
+      <td><span class="c1">${v.name}</span><span class="c2">${v.type}</span></td>
+      <td><span class="plaque">${v.plate}</span></td>
+      <td class="dc dco">${v.year||'—'}</td>
+      <td class="dc dcm">${v.poj||'—'}</td>
+      <td class="dc ${tollCls(v.tollDate)}">${v.tollDate?fmtD(v.tollDate):'—'}</td>
+      <td class="dc ${dateCls(v.belts)||'dco'}">${v.belts}</td>
+      <td class="dc dco">${v.gear}</td>
+      <td class="dc ${dateCls(v.stk)||'dco'}">${v.stk}</td>
+      <td>${onCarTire?tireBadge(onCarTire.season)+' <span class="dc dcm">'+onCarTire.size+'</span>':'<span class="dc dcm">—</span>'}</td>
+      <td>${drvCell}</td>
+      <td>${sBadge(v.status)}</td>
+      <td><div class="ra">
+        <button class="rb g" title="Водій" onclick="openAsnModal(${v.id})">${UICO}</button>
+        <button class="rb" title="Ред." onclick="openVModal(${v.id})">${EICO}</button>
+        <button class="rb d" onclick="confirmDel('vehicle',${v.id},'${v.name.replace(/'/g,"\\'")}','Авто буде видалено з усіма призначеннями.')">${DICO}</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  renderFleetCards();
+}
+
+function renderFleetCards(){
+  const c=document.getElementById('fleetCards');
+  if(!vehicles.length){c.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:12px;font-family:JetBrains Mono,monospace">— список порожній —</div>';return;}
+  c.innerHTML=vehicles.map(v=>{
+    const asn=getCurAsn(v.id);
+    const drv=asn?drivers.find(d=>d.id===asn.driverId):null;
+    const onCarTire=getCurrentTire(v.id);
+    return`<div class="mc">
+      <div class="mc-top">
+        <div class="mc-info"><div class="mcn">${v.name}</div><div class="mct">${v.type} · ${v.year||'—'}</div></div>
+        <div class="mc-right">
+          <span class="mc-pl">${v.plate}</span>
+          <div class="mc-acts">
+            <button class="mab" onclick="openAsnModal(${v.id})" style="color:var(--green)">${UICO}</button>
+            <button class="mab" onclick="openVModal(${v.id})">${EICO}</button>
+            <button class="mab" onclick="confirmDel('vehicle',${v.id},'${v.name.replace(/'/g,"\\'")}','Авто буде видалено.')" style="color:var(--red)">${DICO}</button>
+          </div>
+        </div>
+      </div>
+      <div class="mc-drv">
+        ${drv?`<div><div class="mc-dname">${drv.name}</div><div class="mc-dsince">з ${fmtDT(asn.dateFrom)}</div></div>`:`<div class="mc-dnone">— водій не призначений —</div>`}
+        ${sBadge(v.status)}
+      </div>
+      <div class="mc-grid">
+        <div class="mf"><div class="mfl">Pojištění</div><div class="mfv">${v.poj||'—'}</div></div>
+        <div class="mf"><div class="mfl">Дальниця до</div><div class="mfv ${v.tollDate&&new Date(v.tollDate)<new Date()?'over':''}">${v.tollDate?fmtD(v.tollDate):'—'}</div></div>
+        <div class="mf"><div class="mfl">Ремені</div><div class="mfv ${dateCls(v.belts)}">${v.belts}</div></div>
+        <div class="mf"><div class="mfl">STK</div><div class="mfv ${dateCls(v.stk)}">${v.stk}</div></div>
+        <div class="mf"><div class="mfl">Коробка</div><div class="mfv">${v.gear}</div></div>
+        <div class="mf"><div class="mfl">Пробіг</div><div class="mfv">${v.mileage||'—'}</div></div>
+      </div>
+      <div class="mc-foot">
+        ${onCarTire?tireBadge(onCarTire.season)+' <span style="font-size:11px;color:var(--t3);font-family:JetBrains Mono,monospace">'+onCarTire.size+'</span>':'<span style="font-size:11px;color:var(--t3)">Резина не вказана</span>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════
+// VEHICLE MODAL
+// ══════════════════════════════════════════════════════
+function openVModal(id){
+  editVId=id||null;const v=id?vehicles.find(x=>x.id===id):null;
+  const currentTire=id?getCurrentTire(id):null;
+  document.getElementById('vMT').textContent=v?'Редагувати авто':'Новий автомобіль';
+  document.getElementById('vName').value=v?.name||'';
+  document.getElementById('vType').value=v?.type||'';
+  document.getElementById('vPlate').value=v?.plate||'';
+  document.getElementById('vYear').value=v?.year||'';
+  document.getElementById('vPoj').value=v?.poj||'';
+  document.getElementById('vMileage').value=v?.mileage||'';
+  document.getElementById('vStatus').value=v?.status||'ok';
+  document.getElementById('vVin').value=v?.vin||'';
+  document.getElementById('vBelts').value=v?.belts||'';
+  document.getElementById('vGear').value=v?.gear||'';
+  document.getElementById('vStk').value=v?.stk||'';
+  document.getElementById('vNextService').value=v?.nextService||'';
+  document.getElementById('vTollDate').value=v?.tollDate||'';
+  document.getElementById('vTollAmt').value=v?.tollAmt||'';
+  document.getElementById('vTireSize').value=currentTire?.size||'';
+  vehicleTireTouched=false;
+  setVehicleTireSeason(currentTire?.season||'',false);
+  setSave('vSaveBtn',false);
+  document.getElementById('vOvl').classList.add('on');
+}
+function closeVModal(){document.getElementById('vOvl').classList.remove('on');}
+document.getElementById('vOvl').addEventListener('click',e=>{if(e.target===e.currentTarget)closeVModal();});
+
+async function saveVehicle(){
+  const name=document.getElementById('vName').value.trim();
+  if(!name){toast('Вкажіть назву авто','er');return;}
+  const tireSeason=document.getElementById('vTireSeason').value;
+  const tireSize=document.getElementById('vTireSize').value.trim();
+  if(tireSize&&!tireSeason){toast('Спочатку оберіть сезон резини','er');return;}
+  if(tireSeason&&!tireSize){toast('Вкажіть розмір резини','er');return;}
+  const data={name,type:document.getElementById('vType').value.trim(),plate:document.getElementById('vPlate').value.trim().toUpperCase(),year:parseInt(document.getElementById('vYear').value)||null,poj:document.getElementById('vPoj').value.trim(),mileage:document.getElementById('vMileage').value.trim(),status:document.getElementById('vStatus').value,vin:document.getElementById('vVin').value.trim(),belts:document.getElementById('vBelts').value.trim()||'—',gear:document.getElementById('vGear').value.trim()||'—',stk:document.getElementById('vStk').value.trim()||'—',next_service:document.getElementById('vNextService').value.trim(),toll_paid_until:document.getElementById('vTollDate').value||null,toll_amount:document.getElementById('vTollAmt').value.trim()};
+  setSave('vSaveBtn',true);sync('busy');
+  try{
+    let savedVehicleId=editVId;
+    if(editVId){
+      const{error}=await db.from('vehicles').update(data).eq('id',editVId);
+      if(error)throw error;
+    }else{
+      const{data:created,error}=await db.from('vehicles').insert([data]).select('id').single();
+      if(error)throw error;
+      savedVehicleId=created.id;
+    }
+    await syncVehicleTire(savedVehicleId);
+    await Promise.all([loadV(),loadT()]);
+    sync('ok');toast(editVId?'Авто оновлено ✓':'Авто додано ✓');closeVModal();renderFleet();populateSels();
+  }catch(e){sync('err');toast('Помилка: '+e.message,'er');setSave('vSaveBtn',false);}
+}
+
+async function delVehicle(id){
+  sync('busy');
+  try{await db.from('vehicles').delete().eq('id',id);await Promise.all([loadV(),loadA(),loadT()]);sync('ok');toast('Авто видалено');renderFleet();populateSels();}
+  catch(e){sync('err');toast('Помилка: '+e.message,'er');}
+}
+
+// ══════════════════════════════════════════════════════
+// ASSIGN DRIVER
+// ══════════════════════════════════════════════════════
+function openAsnModal(vehicleId){
+  populateSels();
+  if(vehicleId){document.getElementById('asnVehicle').value=vehicleId;}
+  const now=new Date();now.setSeconds(0,0);
+  document.getElementById('asnFrom').value=now.toISOString().slice(0,16);
+  document.getElementById('asnTo').value='';
+  document.getElementById('asnNote').value='';
+  document.getElementById('asnMT').textContent='Посадити водія за кермо';
+  onAsnVehicleChange();
+  setSave('asnSaveBtn',false);
+  document.getElementById('asnOvl').classList.add('on');
+}
+function closeAsnModal(){document.getElementById('asnOvl').classList.remove('on');}
+document.getElementById('asnOvl').addEventListener('click',e=>{if(e.target===e.currentTarget)closeAsnModal();});
+
+function onAsnVehicleChange(){
+  const vid=parseInt(document.getElementById('asnVehicle').value);if(!vid)return;
+  const curAsn=assignments.find(a=>a.vehicleId===vid&&!a.dateTo);
+  const cur=document.getElementById('asnCurInfo');
+  const hist=document.getElementById('asnHistBlock');
+  if(curAsn){
+    const drv=drivers.find(d=>d.id===curAsn.driverId);
+    cur.style.display='block';
+    document.getElementById('asnCurBody').innerHTML=`<div style="display:flex;align-items:center;gap:12px"><div class="drv-on">${UICO} ${drv?.name||'—'}</div><div style="font-size:11px;color:var(--t3);font-family:JetBrains Mono,monospace">з ${fmtDT(curAsn.dateFrom)}</div></div>`;
+    document.getElementById('asnMT').textContent=`Замінити водія (зараз: ${drv?.name||'—'})`;
+  }else{cur.style.display='none';}
+  const vAsns=assignments.filter(a=>a.vehicleId===vid).slice(0,6);
+  if(vAsns.length){
+    hist.style.display='block';
+    document.getElementById('asnHistBody').innerHTML='<div style="display:flex;flex-direction:column;gap:0">'+vAsns.map(a=>{
+      const drv=drivers.find(d=>d.id===a.driverId);
+      return`<div style="display:flex;align-items:center;gap:0;padding:8px 0;border-bottom:1px solid var(--b1);">
+        <div style="flex:1"><span style="font-size:12.5px;font-weight:600;color:var(--t1)">${drv?.name||'—'}</span>
+        <div style="font-size:10.5px;color:var(--t3);font-family:JetBrains Mono,monospace;margin-top:2px">${fmtDT(a.dateFrom)} → ${a.dateTo?fmtDT(a.dateTo):'<span style="color:var(--green)">Зараз їде</span>'}</div>
+        ${a.dateTo?`<div style="font-size:10px;color:var(--t3)">Тривалість: ${durLabel(a.dateFrom,a.dateTo)}</div>`:''}
+        ${a.note?`<div style="font-size:10.5px;color:var(--t3);font-style:italic">${a.note}</div>`:''}
+        </div>
+        <button class="rb d" onclick="delAsn(${a.id})" title="Видалити запис">${DICO}</button>
+      </div>`;
+    }).join('')+'</div>';
+  }else{hist.style.display='none';}
+}
+
+async function saveAssignment(){
+  const vid=parseInt(document.getElementById('asnVehicle').value);
+  const did=parseInt(document.getElementById('asnDriver').value);
+  const from=document.getElementById('asnFrom').value;
+  const to=document.getElementById('asnTo').value||null;
+  const note=document.getElementById('asnNote').value.trim();
+  if(!vid||!did||!from){toast('Заповніть авто, водія і дату','er');return;}
+  setSave('asnSaveBtn',true);sync('busy');
+  try{
+    // Close existing open assignment
+    const open=assignments.find(a=>a.vehicleId===vid&&!a.dateTo);
+    if(open){await db.from('driver_assignments').update({date_to:from}).eq('id',open.id);}
+    await db.from('driver_assignments').insert([{vehicle_id:vid,driver_id:did,date_from:from,date_to:to,note}]);
+    await loadA();sync('ok');toast('Водія призначено ✓');closeAsnModal();renderFleet();renderDrivers();
+  }catch(e){sync('err');toast('Помилка: '+e.message,'er');setSave('asnSaveBtn',false);}
+}
+
+async function delAsn(id){
+  sync('busy');
+  try{await db.from('driver_assignments').delete().eq('id',id);await loadA();sync('ok');toast('Запис видалено');onAsnVehicleChange();renderFleet();renderDrivers();}
+  catch(e){sync('err');toast('Помилка: '+e.message,'er');}
+}
+
+// ══════════════════════════════════════════════════════
+// DRIVERS
+// ══════════════════════════════════════════════════════
+function renderDrivers(){
+  const active=drivers.filter(d=>assignments.some(a=>a.driverId===d.id&&!a.dateTo)).length;
+  document.getElementById('drvStats').innerHTML=`
+    <div class="sc"><div class="sc-l">Всього</div><div class="sc-v cw">${drivers.length}</div><div class="sc-h">водіїв</div></div>
+    <div class="sc"><div class="sc-l">Активні</div><div class="sc-v cg">${active}</div><div class="sc-h">за кермом</div></div>
+    <div class="sc"><div class="sc-l">Вільні</div><div class="sc-v ca">${drivers.length-active}</div><div class="sc-h">без авто</div></div>
+    <div class="sc"><div class="sc-l">Призначень</div><div class="sc-v cp">${assignments.length}</div><div class="sc-h">всього</div></div>`;
+  document.getElementById('drvCnt').textContent=drivers.length;
+  const tb=document.getElementById('drvTb');
+  if(!drivers.length){tb.innerHTML='<tr class="er-row"><td colspan="9">— водіїв немає —</td></tr>';}
+  else tb.innerHTML=drivers.map((d,i)=>{
+    const curAsn=assignments.find(a=>a.driverId===d.id&&!a.dateTo);
+    const curV=curAsn?vehicles.find(v=>v.id===curAsn.vehicleId):null;
+    const fineCount=fines.filter(f=>f.driverId===d.id).length;
+    const licExpired=d.licExp&&new Date(d.licExp)<new Date();
+    return`<tr>
+      <td class="ri">${String(i+1).padStart(2,'0')}</td>
+      <td><span class="c1">${d.name}</span><span class="c2">${d.cat||''}</span></td>
+      <td class="dc dco">${d.phone||'—'}</td>
+      <td class="dc ${licExpired?'dcx':'dcm'}">${d.license||'—'}${d.licExp?' (до '+fmtD(d.licExp)+')':''}</td>
+      <td>${curV?`<span class="bx bok">${curV.name} · ${curV.plate}</span>`:'<span style="color:var(--t3);font-size:11px">— вільний —</span>'}</td>
+      <td class="dc ${curAsn?'dco':'dcm'}">${curAsn?fmtDT(curAsn.dateFrom):'—'}</td>
+      <td><span class="bx ${fineCount>0?'bdg':'bbl'}" style="${fineCount===0?'background:none;border:none;color:var(--t3)':''}">${fineCount}</span></td>
+      <td style="color:var(--t3);font-size:11.5px;white-space:normal;max-width:140px">${d.note||'—'}</td>
+      <td><div class="ra">
+        <button class="rb g" onclick="openAsnModal(null);setTimeout(()=>{document.getElementById('asnDriver').value=${d.id};},50)">${UICO}</button>
+        <button class="rb" onclick="openDrvModal(${d.id})">${EICO}</button>
+        <button class="rb d" onclick="confirmDel('driver',${d.id},'${d.name.replace(/'/g,"\\'")}','Водія буде видалено.')">${DICO}</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  renderAsnTimeline();
+  populateAsnFilters();
+}
+
+function renderAsnTimeline(){
+  const filterV=parseInt(document.getElementById('asnFilterV')?.value)||null;
+  const filterD=parseInt(document.getElementById('asnFilterD')?.value)||null;
+  let asns=[...assignments];
+  if(filterV)asns=asns.filter(a=>a.vehicleId===filterV);
+  if(filterD)asns=asns.filter(a=>a.driverId===filterD);
+  document.getElementById('asnCnt').textContent=asns.length;
+  const el=document.getElementById('asnTimeline');
+  if(!asns.length){el.innerHTML='<div style="text-align:center;padding:24px;color:var(--t3);font-size:12px">— записів немає —</div>';return;}
+  el.innerHTML='<div class="timeline">'+asns.map(a=>{
+    const drv=drivers.find(d=>d.id===a.driverId);
+    const v=vehicles.find(x=>x.id===a.vehicleId);
+    const active=!a.dateTo;
+    return`<div class="tl-item">
+      <div class="tl-left">
+        <div class="tl-dot ${active?'active':'closed'}"></div>
+        <div class="tl-line"></div>
+      </div>
+      <div class="tl-body">
+        <div class="tl-name">${drv?.name||'—'}</div>
+        <div class="tl-car">${v?.name||'—'} · <span class="plaque" style="font-size:10px;padding:1px 6px">${v?.plate||'—'}</span></div>
+        <div class="tl-time">
+          <span>▶ ${fmtDT(a.dateFrom)}</span>
+          ${a.dateTo?`<span>◀ ${fmtDT(a.dateTo)}</span>`:''}
+        </div>
+        ${active?'<div class="tl-badge-on">● Зараз за кермом</div>':'<div class="tl-dur">Тривалість: '+durLabel(a.dateFrom,a.dateTo)+'</div>'}
+        ${a.note?`<div class="tl-note">${a.note}</div>`:''}
+        <div class="tl-acts">
+          <button class="rb d" onclick="confirmDel('asn',${a.id},'запис','Запис журналу буде видалено.')" style="width:auto;padding:4px 8px;font-size:11px;color:var(--t3);background:var(--s2);border-radius:var(--r8);border:1px solid var(--b1)">${DICO} Видалити</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function populateAsnFilters(){
+  const fv=document.getElementById('asnFilterV');
+  const fd=document.getElementById('asnFilterD');
+  if(fv){const pv=fv.value;fv.innerHTML='<option value="">Всі авто</option>'+vehicles.map(v=>`<option value="${v.id}">${v.name} · ${v.plate}</option>`).join('');fv.value=pv;}
+  if(fd){const pd=fd.value;fd.innerHTML='<option value="">Всі водії</option>'+drivers.map(d=>`<option value="${d.id}">${d.name}</option>`).join('');fd.value=pd;}
+}
+
+// ══════════════════════════════════════════════════════
+// DRIVER MODAL
+// ══════════════════════════════════════════════════════
+function openDrvModal(id){
+  editDrvId=id||null;const d=id?drivers.find(x=>x.id===id):null;
+  document.getElementById('drvMT').textContent=d?'Редагувати водія':'Новий водій';
+  document.getElementById('drvName').value=d?.name||'';
+  document.getElementById('drvPhone').value=d?.phone||'';
+  document.getElementById('drvLicense').value=d?.license||'';
+  document.getElementById('drvCat').value=d?.cat||'';
+  document.getElementById('drvLicExp').value=d?.licExp||'';
+  document.getElementById('drvNote').value=d?.note||'';
+  setSave('drvSaveBtn',false);
+  document.getElementById('drvOvl').classList.add('on');
+}
+function closeDrvModal(){document.getElementById('drvOvl').classList.remove('on');}
+document.getElementById('drvOvl').addEventListener('click',e=>{if(e.target===e.currentTarget)closeDrvModal();});
+
+async function saveDriver(){
+  const name=document.getElementById('drvName').value.trim();
+  if(!name){toast('Вкажіть ім\'я','er');return;}
+  const data={name,phone:document.getElementById('drvPhone').value.trim(),license:document.getElementById('drvLicense').value.trim(),cat:document.getElementById('drvCat').value.trim(),lic_exp:document.getElementById('drvLicExp').value||null,note:document.getElementById('drvNote').value.trim()};
+  setSave('drvSaveBtn',true);sync('busy');
+  try{
+    if(editDrvId){await db.from('drivers').update(data).eq('id',editDrvId);}
+    else{await db.from('drivers').insert([data]);}
+    await loadD();sync('ok');toast(editDrvId?'Водія оновлено ✓':'Водія додано ✓');closeDrvModal();renderDrivers();populateSels();
+  }catch(e){sync('err');toast('Помилка: '+e.message,'er');setSave('drvSaveBtn',false);}
+}
+
+async function delDriver(id){
+  sync('busy');
+  try{await db.from('drivers').delete().eq('id',id);await Promise.all([loadD(),loadA()]);sync('ok');toast('Водія видалено');renderDrivers();populateSels();}
+  catch(e){sync('err');toast('Помилка: '+e.message,'er');}
+}
+
+// ══════════════════════════════════════════════════════
+// FINES
+// ══════════════════════════════════════════════════════
+function mf(){return fines.filter(f=>{const d=new Date(f.date+'T00:00');return d.getFullYear()===cy&&d.getMonth()===cm;}).sort((a,b)=>a.date.localeCompare(b.date));}
+
+function renderFines(){
+  const f=mf(),tot=f.reduce((s,x)=>s+x.amount,0),paid=f.filter(x=>x.status==='paid').length,pend=f.filter(x=>x.status==='pending').length;
+  document.getElementById('fineStats').innerHTML=`
+    <div class="sc"><div class="sc-l">Штрафів</div><div class="sc-v cw">${f.length}</div><div class="sc-h">${MN[cm].toLowerCase()}</div></div>
+    <div class="sc"><div class="sc-l">Сума</div><div class="sc-v ca">${tot.toLocaleString()}</div><div class="sc-h">крон</div></div>
+    <div class="sc"><div class="sc-l">Сплачено</div><div class="sc-v cg">${paid}</div><div class="sc-h">штрафів</div></div>
+    <div class="sc"><div class="sc-l">Очікує</div><div class="sc-v cr">${pend}</div><div class="sc-h">штрафів</div></div>`;
+  document.getElementById('calLbl').textContent=MN[cm]+' '+cy;
+  document.getElementById('fineDot').style.display=fines.filter(x=>x.status==='pending').length?'block':'none';
+  renderCal();renderFineTable();populateSels();
+}
+
+function renderCal(){
+  const g=document.getElementById('calGrid');g.innerHTML='';
+  DN.forEach(d=>{const h=document.createElement('div');h.className='chd';h.textContent=d;g.appendChild(h);});
+  const first=new Date(cy,cm,1);let sdow=first.getDay();sdow=sdow===0?6:sdow-1;
+  const dim=new Date(cy,cm+1,0).getDate(),td=new Date();
+  const isT=d=>td.getFullYear()===cy&&td.getMonth()===cm&&td.getDate()===d;
+  const fmap={};mf().forEach(f=>{const d=new Date(f.date+'T00:00').getDate();(fmap[d]=fmap[d]||[]).push(f);});
+  const tot=Math.ceil((sdow+dim)/7)*7,lrs=tot-7;
+  for(let i=0;i<tot;i++){
+    const dn=i-sdow+1,lr=i>=lrs,cell=document.createElement('div');
+    if(dn<1||dn>dim){cell.className='cc emp'+(lr?' lr':'');g.appendChild(cell);continue;}
+    const hf=!!fmap[dn];
+    cell.className='cc'+(hf?' hf':'')+(isT(dn)?' tod':'')+(lr?' lr':'');
+    const n=document.createElement('span');n.className='dn';n.textContent=dn;cell.appendChild(n);
+    if(hf){
+      fmap[dn].slice(0,2).forEach(f=>{
+        const ch=document.createElement('div');ch.className='fchip';
+        ch.innerHTML=`<div class="fcp">${f.plate}</div><div class="fcd">${f.driver}</div><div class="fct">${f.time} · ${f.reason}</div><div class="fca">${f.amount.toLocaleString()} Kč</div>`;
+        ch.onclick=()=>openFineModal(f.id);cell.appendChild(ch);
+      });
+      if(fmap[dn].length>2){const m=document.createElement('div');m.className='morel';m.textContent=`+${fmap[dn].length-2}`;cell.appendChild(m);}
+    }
+    g.appendChild(cell);
+  }
+}
+
+function renderFineTable(){
+  const f=mf();document.getElementById('fcb').textContent=f.length;
+  const tb=document.getElementById('fineTb');
+  if(tb){
+    if(!f.length)tb.innerHTML='<tr class="er-row"><td colspan="10">— штрафів у цьому місяці немає —</td></tr>';
+    else tb.innerHTML=f.map((x,i)=>{
+      const b=x.status==='paid'?'<span class="bx bok">Сплачено</span>':'<span class="bx bwn">Очікує</span>';
+      return`<tr>
+        <td class="ri">${String(i+1).padStart(2,'0')}</td>
+        <td class="dc dco">${fmtD(x.date)}</td><td class="dc dcm">${x.time}</td>
+        <td><span class="c1" style="font-size:12.5px">${x.car}</span></td>
+        <td><span class="plaque">${x.plate}</span></td>
+        <td style="color:var(--t1);font-weight:500">${x.driver}</td>
+        <td>${x.reason}</td>
+        <td class="dc" style="color:var(--amber);font-weight:500">${x.amount.toLocaleString()} Kč</td>
+        <td>${b}</td>
+        <td><div class="ra"><button class="rb" onclick="openFineModal(${x.id})">${EICO}</button><button class="rb d" onclick="confirmDel('fine',${x.id},'${x.driver.replace(/'/g,"\\'")}','Штраф буде видалено.')">${DICO}</button></div></td>
+      </tr>`;
+    }).join('');
+  }
+  const fl=document.getElementById('fineList');
+  if(fl){
+    if(!f.length)fl.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:12px;font-family:JetBrains Mono,monospace">— штрафів немає —</div>';
+    else fl.innerHTML=f.map(x=>{
+      const b=x.status==='paid'?'<span class="bx bok">Сплачено</span>':'<span class="bx bwn">Очікує</span>';
+      const d=new Date(x.date+'T00:00').toLocaleDateString('uk-UA',{day:'2-digit',month:'long'});
+      return`<div class="fi">
+        <div class="fi-top">
+          <div class="fi-l"><div class="fi-drv">${x.driver}</div><div class="fi-rsn">${x.reason}${x.place?' · '+x.place:''}</div></div>
+          <div class="fi-r"><div class="fi-amt">${x.amount.toLocaleString()} Kč</div>
+            <div class="fi-acts"><button class="mab" onclick="openFineModal(${x.id})">${EICO}</button><button class="mab" onclick="confirmDel('fine',${x.id},'${x.driver.replace(/'/g,"\\'")}','Штраф буде видалено.')" style="color:var(--red)">${DICO}</button></div>
+          </div></div>
+        <div class="fi-row"><span class="plaque">${x.plate}</span><span class="fi-m">${x.car}</span></div>
+        <div class="fi-row"><span class="fi-m">${d}<span class="fi-sep"></span>${x.time}</span>${b}</div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function chM(d){cm+=d;if(cm<0){cm=11;cy--;}if(cm>11){cm=0;cy++;}renderFines();}
+
+// ══════════════════════════════════════════════════════
+// FINE MODAL — AUTO DRIVER
+// ══════════════════════════════════════════════════════
+function autoFindDriver(){
+  const date=document.getElementById('mDate').value;
+  const time=document.getElementById('mTime').value||'00:00';
+  const vid=parseInt(document.getElementById('mCar').value);
+  const hint=document.getElementById('ahint');
+  if(!date||!vid){hint.classList.remove('show');return;}
+  const dt=`${date}T${time}`;
+  const asn=getAsnAtTime(vid,dt);
+  if(asn){
+    const drv=drivers.find(d=>d.id===asn.driverId);
+    if(drv){
+      document.getElementById('mDriver').value=asn.driverId;
+      hint.className='ahint show';
+      hint.innerHTML=`🔍 Знайдено автоматично: <strong>${drv.name}</strong> — їхав на цьому авто о вказаний час.<br><span style="font-size:10.5px;opacity:.8">За кермом з ${fmtDT(asn.dateFrom)} до ${asn.dateTo?fmtDT(asn.dateTo):'сьогодні'}</span>`;
+      return;
+    }
+  }
+  hint.className='ahint warn show';
+  hint.innerHTML=`⚠ Водія за вказаний час не знайдено в журналі. Будь ласка, оберіть вручну.`;
+}
+
+function openFineModal(id){
+  editFineId=id||null;const x=id?fines.find(f=>f.id===id):null;
+  document.getElementById('fMT').textContent=x?'Редагувати штраф':'Новий штраф';
+  document.getElementById('mDate').value=x?.date||new Date().toISOString().split('T')[0];
+  document.getElementById('mTime').value=x?.time||'';
+  document.getElementById('mReason').value=x?.reason||'';
+  document.getElementById('mAmt').value=x?.amount||'';
+  document.getElementById('mNote').value=x?.note||'';
+  document.getElementById('mPlace').value=x?.place||'';
+  setSt(x?.status||'pending');populateSels();
+  if(x){const vM=vehicles.find(v=>v.plate===x.plate||v.name===x.car);if(vM)document.getElementById('mCar').value=vM.id;if(x.driverId)document.getElementById('mDriver').value=x.driverId;}
+  document.getElementById('ahint').classList.remove('show');
+  setSave('fSaveBtn',false);
+  document.getElementById('fOvl').classList.add('on');
+  if(!id)setTimeout(autoFindDriver,100);
+}
+function closeFModal(){document.getElementById('fOvl').classList.remove('on');}
+document.getElementById('fOvl').addEventListener('click',e=>{if(e.target===e.currentTarget)closeFModal();});
+function setSt(s){selSt=s;document.getElementById('sBp').className='sbt'+(s==='pending'?' sp':'');document.getElementById('sBg').className='sbt'+(s==='paid'?' sg':'');}
+
+async function saveFine(){
+  const date=document.getElementById('mDate').value;
+  if(!date){toast('Вкажіть дату','er');return;}
+  const vid=parseInt(document.getElementById('mCar').value);
+  const did=parseInt(document.getElementById('mDriver').value)||null;
+  const v=vehicles.find(x=>x.id===vid);const drv=drivers.find(d=>d.id===did);
+  const data={date,time:document.getElementById('mTime').value||'00:00',car:v?.name||'',plate:v?.plate||'',driver:drv?.name||'',driver_id:did,reason:document.getElementById('mReason').value.trim()||'—',amount:parseInt(document.getElementById('mAmt').value)||0,status:selSt,note:document.getElementById('mNote').value.trim(),place:document.getElementById('mPlace').value.trim()};
+  setSave('fSaveBtn',true);sync('busy');
+  try{
+    if(editFineId){await db.from('fines').update(data).eq('id',editFineId);}
+    else{await db.from('fines').insert([data]);}
+    await loadF();sync('ok');toast(editFineId?'Штраф оновлено ✓':'Штраф додано ✓');closeFModal();
+    const fd=new Date(date+'T00:00');cy=fd.getFullYear();cm=fd.getMonth();renderFines();
+  }catch(e){sync('err');toast('Помилка: '+e.message,'er');setSave('fSaveBtn',false);}
+}
+
+async function delFine(id){
+  sync('busy');
+  try{await db.from('fines').delete().eq('id',id);await loadF();sync('ok');toast('Штраф видалено');renderFines();}
+  catch(e){sync('err');toast('Помилка: '+e.message,'er');}
+}
+
+// ══════════════════════════════════════════════════════
+// TIRES
+// ══════════════════════════════════════════════════════
+function renderTires(){
+  const onCar=tires.filter(t=>t.loc==='on_car').length;
+  const storage=tires.filter(t=>t.loc==='storage').length;
+  const summer=tires.filter(t=>t.season==='summer').length;
+  const winter=tires.filter(t=>t.season==='winter').length;
+  const worn=tires.filter(t=>t.cond==='worn').length;
+  document.getElementById('tireStats').innerHTML=`
+    <div class="sc"><div class="sc-l">Всього</div><div class="sc-v cw">${tires.length}</div><div class="sc-h">записів</div></div>
+    <div class="sc"><div class="sc-l">На авто</div><div class="sc-v cg">${onCar}</div><div class="sc-h">встановлені</div></div>
+    <div class="sc"><div class="sc-l">На складі</div><div class="sc-v ca">${storage}</div><div class="sc-h">зберігаються</div></div>
+    <div class="sc"><div class="sc-l">Літні / Зимові</div><div class="sc-v cb">${summer} / ${winter}</div><div class="sc-h">комплектів</div></div>
+    <div class="sc"><div class="sc-l">Зношені</div><div class="sc-v cr">${worn}</div><div class="sc-h">потрібна заміна</div></div>`;
+  document.getElementById('tireCnt').textContent=tires.length;
+
+  const filterV=parseInt(document.getElementById('tireFilterV')?.value)||null;
+  const filterS=document.getElementById('tireFilterS')?.value||null;
+  let filtered=[...tires];
+  if(filterV)filtered=filtered.filter(t=>t.vehicleId===filterV);
+  if(filterS)filtered=filtered.filter(t=>t.season===filterS);
+
+  const tb=document.getElementById('tireTb');
+  if(tb){
+    if(!filtered.length)tb.innerHTML='<tr class="er-row"><td colspan="12">— шин не знайдено —</td></tr>';
+    else tb.innerHTML=filtered.map((t,i)=>{
+      const v=vehicles.find(x=>x.id===t.vehicleId);
+      return`<tr>
+        <td class="ri">${String(i+1).padStart(2,'0')}</td>
+        <td><span class="c1">${v?.name||'—'}</span><span class="c2">${v?.plate||''}</span></td>
+        <td>${tireBadge(t.season)}</td>
+        <td class="dc dco">${posLabel(t.pos)}</td>
+        <td class="dc dco" style="font-weight:500">${t.size||'—'}</td>
+        <td class="dc dcm">${t.brand||'—'}</td>
+        <td class="dc dcm">${t.yearB||'—'}</td>
+        <td>${condBadge(t.cond)}</td>
+        <td>${locLabel(t.loc)}</td>
+        <td class="dc dcm">${t.storage||'—'}</td>
+        <td style="color:var(--t3);font-size:11.5px;white-space:normal;max-width:120px">${t.note||'—'}</td>
+        <td><div class="ra"><button class="rb" onclick="openTireModal(${t.id})">${EICO}</button><button class="rb d" onclick="confirmDel('tire',${t.id},'шини','Запис буде видалено.')">${DICO}</button></div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Mobile tire cards
+  const tc=document.getElementById('tireCards');
+  if(tc){
+    if(!filtered.length){tc.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:12px;font-family:JetBrains Mono,monospace">— шин не знайдено —</div>';return;}
+    tc.innerHTML=filtered.map(t=>{
+      const v=vehicles.find(x=>x.id===t.vehicleId);
+      return`<div class="mc">
+        <div class="mc-top">
+          <div class="mc-info"><div class="mcn">${t.size||'—'} ${t.brand?'· '+t.brand:''}</div><div class="mct">${v?.name||'—'} · ${posLabel(t.pos)}</div></div>
+          <div class="mc-right">
+            ${tireBadge(t.season)}
+            <div class="mc-acts"><button class="mab" onclick="openTireModal(${t.id})">${EICO}</button><button class="mab" onclick="confirmDel('tire',${t.id},'шини','Запис буде видалено.')" style="color:var(--red)">${DICO}</button></div>
+          </div>
+        </div>
+        <div class="mc-grid">
+          <div class="mf"><div class="mfl">Рік</div><div class="mfv">${t.yearB||'—'}</div></div>
+          <div class="mf"><div class="mfl">Стан</div><div class="mfv ${t.cond==='worn'?'over':t.cond==='ok'?'warn':''}">${{good:'Добрий',ok:'Задовільний',worn:'Зношені'}[t.cond]}</div></div>
+          <div class="mf"><div class="mfl">Де зараз</div><div class="mfv">${t.loc==='on_car'?'На авто':'На складі'}</div></div>
+          <div class="mf"><div class="mfl">Місце</div><div class="mfv">${t.storage||'—'}</div></div>
+        </div>
+        ${t.note?`<div style="padding:8px 13px;border-top:1px solid var(--b1);font-size:11px;color:var(--t3)">${t.note}</div>`:''}
+      </div>`;
+    }).join('');
+  }
+
+  // Populate tire vehicle filter
+  const tf=document.getElementById('tireFilterV');
+  if(tf){
+    const prev=tf.value;
+    tf.innerHTML='<option value="">Всі авто</option>'+vehicles.map(v=>`<option value="${v.id}">${v.name} · ${v.plate}</option>`).join('');
+    if(prev)tf.value=prev;
+  }
+}
+
+function openTireModal(id){
+  editTireId=id||null;const t=id?tires.find(x=>x.id===id):null;
+  document.getElementById('tireMT').textContent=t?'Редагувати шини':'Нові шини';
+  populateSels();
+  document.getElementById('tireVehicle').value=t?.vehicleId||'';
+  document.getElementById('tireSize').value=t?.size||'';
+  document.getElementById('tireNote').value=t?.note||'';
+  setTireSeasonChoice(t?.season||'');
+  setSave('tireSaveBtn',false);
+  document.getElementById('tireOvl').classList.add('on');
+}
+function closeTireModal(){document.getElementById('tireOvl').classList.remove('on');}
+document.getElementById('tireOvl').addEventListener('click',e=>{if(e.target===e.currentTarget)closeTireModal();});
+
+async function saveTire(){
+  const vid=parseInt(document.getElementById('tireVehicle').value);
+  const season=document.getElementById('tireSeason').value;
+  const size=document.getElementById('tireSize').value.trim();
+  if(!vid){toast('Оберіть авто','er');return;}
+  if(!season){toast('Оберіть категорію резини','er');return;}
+  if(!size){toast('Вкажіть розмір резини','er');return;}
+  const existing=editTireId?tires.find(x=>x.id===editTireId):null;
+  const data=buildTirePayload(existing,{vehicle_id:vid,season,size,position:'all',location:'on_car',note:document.getElementById('tireNote').value.trim()});
+  setSave('tireSaveBtn',true);sync('busy');
+  try{
+    if(editTireId){
+      const{error}=await db.from('tires').update(data).eq('id',editTireId);
+      if(error)throw error;
+    }else{
+      const{error}=await db.from('tires').insert([data]);
+      if(error)throw error;
+    }
+    await loadT();sync('ok');toast(editTireId?'Шини оновлено ✓':'Шини додано ✓');closeTireModal();renderTires();
+  }catch(e){sync('err');toast('Помилка: '+e.message,'er');setSave('tireSaveBtn',false);}
+}
+
+async function delTire(id){
+  sync('busy');
+  try{await db.from('tires').delete().eq('id',id);await loadT();sync('ok');toast('Запис видалено');renderTires();}
+  catch(e){sync('err');toast('Помилка: '+e.message,'er');}
+}
+
+// ══════════════════════════════════════════════════════
+// POPULATE SELECTS
+// ══════════════════════════════════════════════════════
+function populateSels(){
+  ['asnVehicle','mCar','tireVehicle'].forEach(id=>{
+    const s=document.getElementById(id);if(!s)return;
+    const p=s.value;
+    s.innerHTML=vehicles.length?vehicles.map(v=>`<option value="${v.id}">${v.name} — ${v.plate}</option>`).join(''):'<option value="">— немає авто —</option>';
+    if(p)s.value=p;
+  });
+  ['asnDriver','mDriver'].forEach(id=>{
+    const s=document.getElementById(id);if(!s)return;
+    const p=s.value;
+    s.innerHTML=drivers.length?drivers.map(d=>`<option value="${d.id}">${d.name}</option>`).join(''):'<option value="">— немає водіїв —</option>';
+    if(p)s.value=p;
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// CONFIRM + DELETE
+// ══════════════════════════════════════════════════════
+function confirmDel(type,id,label,msg){
+  document.getElementById('confT').textContent='Видалити?';
+  document.getElementById('confM').textContent=msg||'Цю дію неможливо скасувати.';
+  document.getElementById('confOk').onclick=()=>{closeConf();
+    if(type==='vehicle')delVehicle(id);
+    else if(type==='driver')delDriver(id);
+    else if(type==='fine')delFine(id);
+    else if(type==='tire')delTire(id);
+    else if(type==='asn')delAsn(id);
+  };
+  document.getElementById('confOvl').classList.add('on');
+}
+function closeConf(){document.getElementById('confOvl').classList.remove('on');}
+document.getElementById('confOvl').addEventListener('click',e=>{if(e.target===e.currentTarget)closeConf();});
+
+// ══════════════════════════════════════════════════════
+// EXPORT CSV
+// ══════════════════════════════════════════════════════
+function exportCSV(){
+  const f=mf();
+  if(!f.length){toast('Штрафів за цей місяць немає','er');return;}
+  const rows=[['#','Дата','Час','Авто','Номер','Водій','Причина','Місце події','Сума (Kč)','Статус','Примітка']];
+  f.forEach((x,i)=>rows.push([i+1,fmtD(x.date),x.time,x.car,x.plate,x.driver,x.reason,x.place||'',x.amount,x.status==='paid'?'Сплачено':'Очікує',x.note||'']));
+  const csv='\uFEFF'+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`штрафи_${MN[cm]}_${cy}.csv`;a.click();toast('CSV завантажено ✓');
+}
+
+// ══════════════════════════════════════════════════════
+// EXPORT PDF
+// ══════════════════════════════════════════════════════
+function exportPDF(){
+  const f=mf();
+  const tot=f.reduce((s,x)=>s+x.amount,0),paid=f.filter(x=>x.status==='paid').reduce((s,x)=>s+x.amount,0);
+  const mAsns=assignments.filter(a=>{
+    const from=new Date(a.dateFrom),to=a.dateTo?new Date(a.dateTo):new Date();
+    return(from.getFullYear()===cy&&from.getMonth()===cm)||(to.getFullYear()===cy&&to.getMonth()===cm);
+  });
+  const fRows=f.map((x,i)=>`<tr><td>${i+1}</td><td>${fmtD(x.date)}</td><td>${x.time}</td><td>${x.car}</td><td>${x.plate}</td><td>${x.driver}</td><td>${x.reason}</td><td>${x.place||'—'}</td><td>${x.amount.toLocaleString()} Kč</td><td>${x.status==='paid'?'✓ Сплачено':'⏳ Очікує'}</td></tr>`).join('');
+  const aRows=mAsns.map((a,i)=>{
+    const drv=drivers.find(d=>d.id===a.driverId),v=vehicles.find(x=>x.id===a.vehicleId);
+    return`<tr><td>${i+1}</td><td>${drv?.name||'—'}</td><td>${v?.name||'—'}</td><td>${v?.plate||'—'}</td><td>${fmtDT(a.dateFrom)}</td><td>${a.dateTo?fmtDT(a.dateTo):'Зараз їде'}</td><td>${a.dateTo?durLabel(a.dateFrom,a.dateTo):'—'}</td><td>${a.note||'—'}</td></tr>`;
+  }).join('');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+  *{box-sizing:border-box;}body{font-family:Arial,sans-serif;font-size:11px;color:#111;margin:28px;}
+  h1{font-size:17px;margin-bottom:2px;}h2{font-size:13px;margin:20px 0 7px;border-bottom:2px solid #111;padding-bottom:3px;}
+  p{color:#555;margin-bottom:14px;font-size:11px;}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px;}
+  th{background:#111;color:#fff;padding:6px 8px;text-align:left;font-size:10px;}
+  td{padding:5px 8px;border-bottom:1px solid #e0e0e0;font-size:10.5px;}
+  tr:nth-child(even) td{background:#f8f8f8;}
+  .sum{display:flex;gap:12px;flex-wrap:wrap;}
+  .si{background:#f5f5f5;border:1px solid #ddd;border-radius:5px;padding:10px 14px;}
+  .sv{font-size:18px;font-weight:700;margin-bottom:2px;}.sl{font-size:9px;color:#666;text-transform:uppercase;}
+  @media print{body{margin:12px;}}
+  </style></head><body>
+  <h1>ORA ET LABORA — Звіт за ${MN[cm]} ${cy}</h1>
+  <p>Сформовано: ${new Date().toLocaleDateString('uk-UA')} · Штрафів: ${f.length} · Сума: ${tot.toLocaleString()} Kč</p>
+  <h2>Штрафи</h2>
+  <table><thead><tr><th>#</th><th>Дата</th><th>Час</th><th>Авто</th><th>Номер</th><th>Водій</th><th>Причина</th><th>Місце</th><th>Сума</th><th>Статус</th></tr></thead>
+  <tbody>${fRows||'<tr><td colspan="10" style="text-align:center;color:#999">— штрафів немає —</td></tr>'}</tbody></table>
+  <div class="sum">
+    <div class="si"><div class="sv">${f.length}</div><div class="sl">Всього</div></div>
+    <div class="si"><div class="sv">${tot.toLocaleString()} Kč</div><div class="sl">Загальна сума</div></div>
+    <div class="si"><div class="sv">${paid.toLocaleString()} Kč</div><div class="sl">Сплачено</div></div>
+    <div class="si"><div class="sv">${(tot-paid).toLocaleString()} Kč</div><div class="sl">Залишок</div></div>
+  </div>
+  <h2>Журнал змін водіїв за місяць</h2>
+  <table><thead><tr><th>#</th><th>Водій</th><th>Авто</th><th>Номер</th><th>Сів за кермо</th><th>Здав авто</th><th>Тривалість</th><th>Примітка</th></tr></thead>
+  <tbody>${aRows||'<tr><td colspan="8" style="text-align:center;color:#999">— записів немає —</td></tr>'}</tbody></table>
+  <script>window.onload=()=>window.print()<\/script></body></html>`);
+  w.document.close();
+}
+
+// ══════════════════════════════════════════════════════
+// START
+// ══════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
